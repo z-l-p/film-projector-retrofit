@@ -52,17 +52,23 @@ The camtank contains the pulldown claw mechanism. The original shutter and pulle
 
 2) Remove the screws around the camtank perimeter. Lift the camtank lid to reveal the inside.
 
-3) Clean the old grease from the cam, follower, and felt pad. Pack with new grease (Superlube) and lubricate the fulcrum. Add info from service manual.
+3) Clean the old grease from the cam, follower, and felt pad. Pack with new grease (Superlube) and lubricate the fulcrum. Add info from service manual.  
+[Camtank internals](images/eiki-camtank/02-Camtank-open.jpg)
 
 4) Check the tension on the spring that keeps the follower on the cam. Use a digital luggage scale or tension scale to check force required to lift pulldown claw away from cam. It should be 1.1 - 1.25 kg. (Carefully widen the spring coil to reduce tension if needed.) Consult service manual.
 
-5) The still frame clutch lever needs to be removed from the camtank cover. The screw may be very tight, so be careful not to strip the head.
+5) The still frame clutch lever needs to be removed from the camtank cover via 2 slotted screws. (The screws may be very tight, so be careful not to strip the heads.)  
+[Camtank clutch plate removal](images/eiki-camtank/03-Camtank-cover-with-clutch.jpg)
 
-6) Use the 3D-printed camtank cover (STL filename?) to cover the large hole in the camtank cover, then replace the cover.
+6) Use the 3D-printed camtank cover (STL filename?) to cover the large hole in the camtank cover, then replace the cover.  
+[Camtank with 3D-printed cover](images/eiki-camtank/04-Camtank-with-cover.jpg)
 
-7) Attach the 80 tooth pulley to the camtank shaft (with ? mm of shaft exposed at the end?) and tighten the screws firmly. If the pulley seems off-center, try shimming it with small piece of aluminum from a beer / soda can.
+7) Attach the 80 tooth pulley to the camtank shaft (with ? mm of shaft exposed at the end?) and tighten the screws firmly. If the pulley "wobbles" on the shaft, try shimming it with small piece of aluminum from a beer / soda can.
 
-8) There are two 3D-printed parts for the magnet assembly (STL filenames?). Both should be printed at 1mm resolution and tested since they have small mating threads. Use CA glue to attach the sensor magnet to the cap. The base should attach to the camtank shaft using an M4 x 10mm screw. (The original Eiki screw is too long.) Tighten M4 screw and use threadlocker. Screw the cap onto the base until finger-tight.
+8) There are two 3D-printed parts for the magnet assembly (STL filenames?). Both should be printed at 1mm resolution and tested since they have small mating threads. Use CA glue to attach the sensor magnet to the cap. [Magnet assembly parts](images/eiki-camtank/05-Shutter-magnet-exploded.jpg)  
+The base should attach to the camtank shaft using an M4 x 10mm screw. (The original Eiki screw is too long.) Tighten M4 screw and use threadlocker. [Old and new screws](images/eiki-camtank/06b-Shutter-screws-old-new.jpg)  
+Screw the cap onto the base until finger-tight. [Finished magnet assembly](images/eiki-camtank/06-Shutter-magnet-assembled.jpg)  
+[Finished camtank](images/eiki-camtank/07-camtank-finished.jpg)
 
 9) Install the camtank in projector using original Eiki screws. (It may need adjustment later, after test film is loaded.)
 
