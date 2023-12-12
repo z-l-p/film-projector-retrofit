@@ -1,6 +1,7 @@
-**Spectral Projector Conversion Guide**
+SPECTRAL Projector Conversion Guide
+===================================
 
-(Work In Progress! Composed in markdown format for github, to be adapted to filmlabs.org wiki)
+*Work In Progress! Composed in markdown format for github, to be adapted to filmlabs.org wiki*
 
 
 Summary
@@ -15,24 +16,30 @@ Theory of Operation and how the parts interact to make it all work
 Preparation
 ===========
 
-Purchase parts from the BOM
+Purchase parts from the BOM (insert link to BOM)
 
-Test and lubricate projector before disassembly
+Test projector with film before disassembly. It's important to find any problems before you start hacking!
 
-Remove unused parts
+Replace belts if necesary. In this project you will re-use all belts except for the motor belt.
 
-Drill holes in projector frame (before installing any delicate stuff)
+Remove unused parts: power transformer, audio amp, motor
 
-3D print new parts
+Remove and save the parts that you will re-use later: camtank, lamp holder, black exciter lamp cover, main selector switch (more?)
+
+Lubricate projector (insert link to service manual)
+
+Drill holes in projector frame (which holes?)
+
+3D print new parts (insert link to STL files)
 
 Power Wiring
 ============
 
-Consult the main diagram for the basic flow.
+Consult the main diagram for the basic flow. (insert diagram link)
 
 There are 2 possible power sources: A 12V DC adapter with standard coaxial jack or a 3S LiPo battery. A 3-position SPDT switch selects DC / OFF / Battery.
 
-All wiring should be 18AWG (?mm) or larger, because there are high currents involved.
+All wiring should be 18AWG (1mm²) or larger, because there are high currents involved.
 
 Mount switch, DC jack, and fuse holder in the holes you drilled in projector chassis.
 
@@ -72,7 +79,7 @@ Motor Prep and Wiring
 
 The Hobbywing "Quicrun SE" 1200kv motor is made for radio controlled trucks. It is a brushless DC motor with built-in ESC (speed control) and uses FOC (field oriented control) to create smooth movement at low RPM while maintaining high torque. This is a big benefit for projection at slow speeds. (Other "540 size" DC motors and ESCs will also work, but they probably won't move smoothly at low speeds.)
 
-The micro-controller will send a PWM signal to "impersonate" an RC receiver, but there are several things we need to do to prepare the motor first.
+The micro-controller will send a PWM signal to "impersonate" an RC receiver, but there are several things we must do to prepare the motor first.
 
 - Describe modification of power switch
 
@@ -118,7 +125,7 @@ B, A, I, V
 
 NEED PICTURE OF WIRING ON BACK OF BOARD
 
-4) Mount the encoder board to the 3D-printed encoder bracket (STL filename?) using two M2.3 x 5mm self-tapping screws.
+4) Mount the encoder board to the 3D-printed encoder bracket ("encoder_bracket.stl"") using two M2.3 x 5mm self-tapping screws.
 
 Encoder Mounting
 ================
