@@ -45,7 +45,8 @@ Power will flow from the switch through the fuse and into the terminal strip, th
 Camtank and Shutter Pulley
 ==========================
 
-The camtank contains the pulldown claw mechanism. The original shutter and pulley mounts to the outside, with a still frame clutch lever in between. We will remove the pulley, shutter and clutch mechanism. We will replace the pulley with a new one, and mount the encoder magnet on the shaft. ![Camtank exploded](images/eiki-camtank/01-Camtank-shutter-exploded.jpg)
+The camtank contains the pulldown claw mechanism. The original shutter and pulley mounts to the outside, with a still frame clutch lever in between. We will remove the pulley, shutter and clutch mechanism. We will replace the pulley with a new one, and mount the encoder magnet on the shaft.  
+[Camtank exploded view](images/eiki-camtank/01-Camtank-shutter-exploded.jpg)
 
 1) Remove the screw on the end of the pulley. This should release the pulley, shutter, and other hardware.
 
