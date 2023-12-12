@@ -47,11 +47,11 @@ Camtank and Shutter Pulley
 
 The camtank contains the pulldown claw mechanism. The original shutter and pulley mounts to the outside, with a still frame clutch lever in between. We will remove the pulley, shutter and clutch mechanism. We will replace the pulley with a new one, and mount the encoder magnet on the shaft. [Camtank exploded view](images/eiki-camtank/01-Camtank-shutter-exploded.jpg)
 
-1) Remove the screw on the end of the pulley. This should release the pulley, shutter, and other hardware.
+1) Remove the M4 screw on the end of the pulley. This should release the pulley, shutter, and other hardware.
 
 2) Remove the screws around the camtank perimeter. Lift the camtank lid to reveal the inside.
 
-3) Clean the old grease from the cam, follower, and felt pad. Pack with new grease (Superlube) and lubricate the fulcrum. Add info from service manual. [Camtank internals](images/eiki-camtank/02-Camtank-open.jpg)
+3) Clean the old grease from the cam, follower, and felt pad. Pack with new grease (Superlube) and lubricate the fulcrum. (Add info from service manual.) [Camtank internals](images/eiki-camtank/02-Camtank-open.jpg)
 
 4) Check the tension on the spring that keeps the follower on the cam. Use a digital luggage scale or tension scale to check force required to lift pulldown claw away from cam. It should be 1.1 - 1.25 kg. (Carefully widen the spring coil to reduce tension if needed.) Consult service manual.
 
@@ -63,8 +63,7 @@ The camtank contains the pulldown claw mechanism. The original shutter and pulle
 
 8) There are two 3D-printed parts for the magnet assembly (STL filenames?). Both should be printed at 1mm resolution and tested since they have small mating threads. Use CA glue to attach the sensor magnet to the cap. [Magnet assembly parts](images/eiki-camtank/05-Shutter-magnet-exploded.jpg)  
 The base should attach to the camtank shaft using an M4 x 10mm screw. (The original Eiki screw is too long.) Tighten M4 screw and use threadlocker. [Old and new screws](images/eiki-camtank/06b-Shutter-screws-old-new.jpg)  
-Screw the cap onto the base until finger-tight. [Finished magnet assembly](images/eiki-camtank/06-Shutter-magnet-assembled.jpg)  
-[Finished camtank](images/eiki-camtank/07-camtank-finished.jpg)
+Screw the cap onto the base until finger-tight. [Finished magnet assembly](images/eiki-camtank/06-Shutter-magnet-assembled.jpg) [Finished camtank](images/eiki-camtank/07-camtank-finished.jpg)
 
 9) Install the camtank in projector using original Eiki screws. (It may need adjustment later, after test film is loaded.)
 
