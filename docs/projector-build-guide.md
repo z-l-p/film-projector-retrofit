@@ -45,23 +45,19 @@ Power will flow from the switch through the fuse and into the terminal strip, th
 Camtank and Shutter Pulley
 ==========================
 
-The camtank contains the pulldown claw mechanism. The original shutter and pulley mounts to the outside, with a still frame clutch lever in between. We will remove the pulley, shutter and clutch mechanism. We will replace the pulley with a new one, and mount the encoder magnet on the shaft.  
-[Camtank exploded view](images/eiki-camtank/01-Camtank-shutter-exploded.jpg)
+The camtank contains the pulldown claw mechanism. The original shutter and pulley mounts to the outside, with a still frame clutch lever in between. We will remove the pulley, shutter and clutch mechanism. We will replace the pulley with a new one, and mount the encoder magnet on the shaft. [Camtank exploded view](images/eiki-camtank/01-Camtank-shutter-exploded.jpg)
 
 1) Remove the screw on the end of the pulley. This should release the pulley, shutter, and other hardware.
 
 2) Remove the screws around the camtank perimeter. Lift the camtank lid to reveal the inside.
 
-3) Clean the old grease from the cam, follower, and felt pad. Pack with new grease (Superlube) and lubricate the fulcrum. Add info from service manual.  
-[Camtank internals](images/eiki-camtank/02-Camtank-open.jpg)
+3) Clean the old grease from the cam, follower, and felt pad. Pack with new grease (Superlube) and lubricate the fulcrum. Add info from service manual. [Camtank internals](images/eiki-camtank/02-Camtank-open.jpg)
 
 4) Check the tension on the spring that keeps the follower on the cam. Use a digital luggage scale or tension scale to check force required to lift pulldown claw away from cam. It should be 1.1 - 1.25 kg. (Carefully widen the spring coil to reduce tension if needed.) Consult service manual.
 
-5) The still frame clutch lever needs to be removed from the camtank cover via 2 slotted screws. (The screws may be very tight, so be careful not to strip the heads.)  
-[Camtank clutch plate removal](images/eiki-camtank/03-Camtank-cover-with-clutch.jpg)
+5) The still frame clutch lever needs to be removed from the camtank cover via 2 slotted screws. (The screws may be very tight, so be careful not to strip the heads.) [Camtank clutch plate removal](images/eiki-camtank/03-Camtank-cover-with-clutch.jpg)
 
-6) Use the 3D-printed camtank cover (STL filename?) to cover the large hole in the camtank cover, then replace the cover.  
-[Camtank with 3D-printed cover](images/eiki-camtank/04-Camtank-with-cover.jpg)
+6) Use the 3D-printed camtank cover (STL filename?) to cover the large hole in the camtank cover, then replace the cover. [Camtank with 3D-printed cover](images/eiki-camtank/04-Camtank-with-cover.jpg)
 
 7) Attach the 80 tooth pulley to the camtank shaft (with ? mm of shaft exposed at the end?) and tighten the screws firmly. If the pulley "wobbles" on the shaft, try shimming it with small piece of aluminum from a beer / soda can.
 
