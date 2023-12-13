@@ -6,24 +6,29 @@
 // Controlling Hobbywing "Quickrun Fusion SE" motor/ESC combo using ESP32 LEDC peripheral (using 16bit timer for extra resolution)
 // Note: Hobbywing motor/esc needs to be programmed via "programming card" to disable braking, otherwise it will try to hold position when speed = 0
 // "Digital shutter" is accomplished via AS5047 magnetic rotary encoder, setup via SPI registers and monitored via ABI quadrature pulses
+// LED is dimmed via CC LED driver board with PWM input, driven by ESP32 LEDC (which causes slight PWM blinking artifacts at low brightness levels)
+// Future option exists for current-controlled dimming (set LedDimMode=0): Perhaps a log taper digipot controlled via SPI? Probably can't dim below 20% though.
 
 
 // TODO Urgent: 
 // startup with lamp disabled!!!! Otherwise film will burn! (Actually, at startup we should advance projector to blanking point at each startup so shutter is closed)
 // add forward/backward buttons to code (currently connected but unused)
 // February 2023 Eiki UI will have settings for "safe" mode where lamp brightness is linked to speed and shutter angle to prevent film burns. This will change UI input logic.
-// make UI parts of code more modular, so you can create a simpler (P26?) version with fewer controls
+// Modular UI changes: Finish updateMotor() to support simple motor pot
 // Figure out ESC on/off button hack, then add ESP output to turn ESC on after boot
 // (also if ESC loses its settings then we might need to set throttle config, etc on startup too!)  
 // when slew rate is reduced, the slew buffer should be truncated so previous history doesn't influence future values when slew is turned back up (tried to fix in line 468 but failed. I should replace averaging library with my own function so I have direct access to buffer array.)
+// add debounce lib for buttons
+// add RGB LED feedback for battery charge, etc (or just buy batt meter board?)
 
 // TODO Nice but not essential:
 // put UI vars in struct, in case we want to receive them from a remote ESP connected via radio 
-// make FPSreal a float 
-// shutter: add default mask for pulldown to overlay on computed shutter?
-// if ESP32 Arduino core gets support for ledc output_invert method, we can simplify the ISR inverted condition
+// Add closed-loop PID motor speed, eliminating hand-tuned motMinUS & motMaxUS values (Maybe this could also enable cheaper motor/ESC since PID would boost low speed torque and control?)
+// if ESP32 Arduino core ever gets support for ledc output_invert method, we can simplify the ISR inverted condition
 
 // Include the libraries
+// NOTE: In 2023 this code was developed using the ESP32 Arduino core v2.0.9. 
+// When ESP32 Arduino core v3.x is released there will be breaking changes because LEDC setup will be different!
 #include <AS5X47.h>             // https://github.com/adrien-legrand/AS5X47
 #include <elapsedMillis.h>      // https://github.com/pfeerick/elapsedMillis
 #include <movingAvg.h>          // https://github.com/JChristensen/movingAvg
@@ -34,6 +39,13 @@ int debugEncoder = 0; // serial messages for encoder count and shutterMap value
 int debugFrames = 0; // serial messages for frame count and FPS
 int debugMotor = 1; // serial messages for motor info
 int debugLed = 0; // serial messages for LED info
+
+// Basic setup options (enable the options based on your hardware choices)
+#define enableShutterPots 1 // 0 = use hard-coded shutterBlades and shutterAngle, 1 = use pots
+#define enableSlewPots 1 // 0 = use hard-coded ledSlewMin and motSlewMin, 1 = use pots
+#define enableMotSwitch 1 // 0 = single pot for motor direction/speed (center = STOP), 1 = use switch for FWD-STOP-BACK & pot for speed
+#define enableSafeSwitch 1 // 0 = use hard-coded safeMode to limit LED brightness, 1 = use switch to enable/disable safe mode
+#define enableSingleButtons 1 // 1 = use buttons for single frame FORWARD / BACK
 
 // INPUT PINS //
   // UI
@@ -47,6 +59,8 @@ int debugLed = 0; // serial messages for LED info
 #define motDirBckSwitch 26 // digital input for motor direction switch (backward)
 #define motSingleFwdButton 27 // digital input for single frame forward button
 #define motSingleBckButton 14 // digital input for single frame backward button
+#define safeSwitch 12 // switch to enable "safe mode" where lamp brightness is automatically dimmed at slow speeds
+
 
   // Encoder
 #define EncI 17 // encoder pulse Index (AS5047 sensor)
@@ -62,11 +76,15 @@ int debugLed = 0; // serial messages for LED info
 int AnalogReadThresh = 64; // "Activity Threshold" for ResponsiveAnalogRead library (higher = less noise but may ignore small changes)
 float AnalogReadMultiplier = 0.001; // "Snap Multiplier" for ResponsiveAnalogRead library (lower = smoother)
 ResponsiveAnalogRead motPot(motPotPin, true, AnalogReadMultiplier);
-ResponsiveAnalogRead motSlewPot(motSlewPotPin, true, AnalogReadMultiplier);
 ResponsiveAnalogRead ledPot(ledPotPin, true, AnalogReadMultiplier);
-ResponsiveAnalogRead ledSlewPot(ledSlewPotPin, true, AnalogReadMultiplier);
-ResponsiveAnalogRead shutBladesPot(shutBladesPotPin, true, AnalogReadMultiplier);
-ResponsiveAnalogRead shutAnglePot(shutAnglePotPin, true, AnalogReadMultiplier);
+#if (enableSlewPots) 
+  ResponsiveAnalogRead motSlewPot(motSlewPotPin, true, AnalogReadMultiplier);
+  ResponsiveAnalogRead ledSlewPot(ledSlewPotPin, true, AnalogReadMultiplier);
+#endif
+#if (enableShutterPots)
+  ResponsiveAnalogRead shutBladesPot(shutBladesPotPin, true, AnalogReadMultiplier);
+  ResponsiveAnalogRead shutAnglePot(shutAnglePotPin, true, AnalogReadMultiplier);
+#endif
 
 int ledSlewVal;
 int ledSlewMin = 1; // the minumum slew value when knob is turned down (1-200)
@@ -82,15 +100,16 @@ float shutAngleValOld;
 movingAvg motAvg(200); // 200 samples @ 50/sec = 10 sec maximum buffer
 movingAvg ledAvg(200); // 200 samples @ 50/sec = 10 sec maximum buffer
 
-// UI VARS (could also be updated by remote control. Put these in a struct for easier management)
+// UI VARS (could also be updated by remote control in future. Put these in a struct for easier radiolib management?)
 int motPotVal = 0; // current value of Motor pot (not necessarily the current speed since we might be ramping toward this value)
 int ledPotVal = 0; // current value of LED pot (not necessarily the current LED brightness since we might be fading or strobing)
 int shutterBlades = 2; // How many shutter blades: (minimum = 1 so lower values will be constrained to 1)
 float shutterAngle = 0.5; // float shutter angle per blade: 0= LED always off, 1= LED always on, 0.5 = 180d shutter angle
 
 // LED VARS //
-int LedDimMode = 1; // 0 = current-controlled dimming (how?), 1 = PWM dimming
-int LedInvert = 1; // set to 1 to invert LED output signal so it's active-low
+int safeMode = 0; // 0 = normal, 1 = ledBright is limited by speed and shutter angle to prevent film burns (NOT YET IMPLEMENTED!)
+int LedDimMode = 1; // 0 = current-controlled dimming (NOT YET IMPLEMENTED!), 1 = PWM dimming
+int LedInvert = 1; // set to 1 to invert LED output signal so it's active-low (required by H6cc driver board)
 int ledBright = 0; // current brightness of LED (range depends on Res below. If we're ramping then this will differ from pot value)
 const int ledBrightRes = 12; // bits of resolution for LED dimming
 const int ledBrightFreq = 1000; // PWM frequency (500Hz is published max for H6cc LED driver, 770Hz is closer to shutter segment period, 1000 seems to work best)
@@ -142,32 +161,39 @@ void setup() {
   pinMode(EncB, INPUT);
   pinMode(EncI, INPUT);
   if (!LedDimMode) pinMode(ledPin, OUTPUT); // only used for current-controlled dimming. Otherwise LEDC setup will take care of this
-  pinMode(motDirFwdSwitch, INPUT_PULLUP);
-  pinMode(motDirBckSwitch, INPUT_PULLUP);
-  pinMode(motSingleFwdButton, INPUT_PULLUP);
-  pinMode(motSingleBckButton, INPUT_PULLUP);
-
+  if (enableMotSwitch) {
+      pinMode(motDirFwdSwitch, INPUT_PULLUP);
+      pinMode(motDirBckSwitch, INPUT_PULLUP);
+  }
+  if (enableSingleButtons) {
+    pinMode(motSingleFwdButton, INPUT_PULLUP);
+    pinMode(motSingleBckButton, INPUT_PULLUP);
+  }
+  if (enableSafeSwitch) {
+    pinMode(safeSwitch, INPUT_PULLUP);
+  }
   attachInterrupt(EncA, pinChangeISR, CHANGE);
   attachInterrupt(EncB, pinChangeISR, CHANGE);
   abOld = count = countOld = 0;
 
   motPot.setAnalogResolution(4096);
   motPot.setActivityThreshold(AnalogReadThresh);
-
-  motSlewPot.setAnalogResolution(4096);
-  motSlewPot.setActivityThreshold(AnalogReadThresh);
-
   ledPot.setAnalogResolution(4096);
   ledPot.setActivityThreshold(AnalogReadThresh);
 
-  ledSlewPot.setAnalogResolution(4096);
-  ledSlewPot.setActivityThreshold(AnalogReadThresh);
+  #if (enableSlewPots)
+    motSlewPot.setAnalogResolution(4096);
+    motSlewPot.setActivityThreshold(AnalogReadThresh);
+    ledSlewPot.setAnalogResolution(4096);
+    ledSlewPot.setActivityThreshold(AnalogReadThresh);
+  #endif
 
-  shutBladesPot.setAnalogResolution(4096);
-  shutBladesPot.setActivityThreshold(AnalogReadThresh);
-
-  shutAnglePot.setAnalogResolution(4096);
-  shutAnglePot.setActivityThreshold(AnalogReadThresh);
+  #if  (enableShutterPots == 1)
+    shutBladesPot.setAnalogResolution(4096);
+    shutBladesPot.setActivityThreshold(AnalogReadThresh);
+    shutAnglePot.setAnalogResolution(4096);
+    shutAnglePot.setActivityThreshold(AnalogReadThresh);
+  #endif
 
   motAvg.begin(); // start the moving average for slewing
   ledAvg.begin(); // start the moving average for slewing
@@ -179,18 +205,18 @@ void setup() {
   Serial.println("SPECTRAL Projector Controller");
   Serial.println("-----------------------------");
   
-  // Set rotation direction (see datasheet page 17)
+  // Set rotation direction (see AS5047 datasheet page 17)
   Settings1 settings1;
   settings1.values.dir = 0;
   as5047.writeSettings1(settings1);
   
-  // Set ABI output resolution (see datasheet page 19)
+  // Set ABI output resolution (see AS5047 datasheet page 19)
   // (pulses per rev: 5 = 50 pulses, 6 = 25 pulses, 7 = 8 pulses)
   Settings2 settings2;
   settings2.values.abires = 6;
   as5047.writeSettings2(settings2);
 
-  // Disable ABI output when magnet error (low or high) exists (see datasheet page 24)
+  // Disable ABI output when magnet error (low or high) exists (see AS5047 datasheet page 24)
   Zposl zposl;
   Zposm zposm;
   zposl.values.compLerrorEn = 1;
@@ -346,7 +372,7 @@ void send_LEDC() {
           }
           
         }
-      } else { // current controlled mode so we're just toggling the LED pin here
+      } else { // current controlled mode so we're just toggling the LED pin here and adjusting brightness in some other way
         if (LedInvert) {
           digitalWrite(ledPin, !(shutterState));
         } else {
@@ -414,24 +440,27 @@ void updateShutterMap(byte shutterBlades, float shutterAngle) {
 }
 
 void readPots() {
-  // update each pot using responsiveRead library
+  // update each pot using responsiveRead library, then get its value
   ledPot.update();
-  ledSlewPot.update();
   motPot.update();
-  motSlewPot.update();
-  shutBladesPot.update();
-  shutAnglePot.update();
-
-  // READ LED BRIGHTNESS POT (with averaging for noise reduction. Output 12bit 0-4095)
   ledPotVal = ledPot.getValue();
   motPotVal = motPot.getValue();
-  ledSlewVal = ledSlewPot.getValue();
-  motSlewVal = motSlewPot.getValue();
-  shutBladesVal = shutBladesPot.getValue();
-  shutAngleVal = shutAnglePot.getValue();
 
-  shutBladesVal = map(shutBladesVal, 0, 4095, 1, 3); // map ADC input to range of number of shutter blades
-  shutAngleVal = mapf(shutAngleVal, 0, 4095, 0.1, 1.0); // map ADC input to range of shutter angle
+  #if (enableSlewPots)
+    ledSlewPot.update();
+    motSlewPot.update();
+    ledSlewVal = ledSlewPot.getValue();
+    motSlewVal = motSlewPot.getValue();
+  #endif
+
+  #if (enableShutterPots) 
+    shutBladesPot.update();
+    shutAnglePot.update();
+    shutBladesVal = shutBladesPot.getValue();
+    shutAngleVal = shutAnglePot.getValue();
+    shutBladesVal = map(shutBladesVal, 0, 4095, 1, 3); // map ADC input to range of number of shutter blades
+    shutAngleVal = mapf(shutAngleVal, 0, 4095, 0.1, 1.0); // map ADC input to range of shutter angle
+  #endif
 }
 
 // compute LED brightness (note that the ISR ultimately controls the LED state since it acts as the digital shutter)
@@ -472,14 +501,18 @@ void updateMotor() {
     // Depending on the motor direction switch, we translate the pot ADC to FPS with optional negative scaling
     // (The slewing averager only deals with ints, so our FPS is multiplied by 100 to make it int 2400)
     int motPotFPS;
-    if (!digitalRead(motDirFwdSwitch)) {
-      motPotFPS = mapf(motPotVal,0,4095,20,2400); // convert mot pot value to FPS x 100
-    } else if (!digitalRead(motDirBckSwitch)) {
-      motPotFPS = mapf(motPotVal,0,4095,-20,-2400); // convert mot pot value to FPS x 100
+    if (enableMotSwitch) {
+      if (!digitalRead(motDirFwdSwitch)) {
+        motPotFPS = mapf(motPotVal,0,4095,20,2400); // convert mot pot value to FPS x 100
+      } else if (!digitalRead(motDirBckSwitch)) {
+        motPotFPS = mapf(motPotVal,0,4095,-20,-2400); // convert mot pot value to FPS x 100
+      } else {
+        motPotFPS = 0;
+      }
     } else {
-      motPotFPS = 0;
+       // Insert code for FORWARD-STOP-BACK pot scaling
     }
-    int motSlewMin = 20; // the minumum slew value (1-200)
+    //int motSlewMin = 20; // the minumum slew value (1-200) REPLACED WITH GLOBAL VARIABLE
     motAvg.reading(motPotFPS); // update the average motPotFPS
     motSlewVal = map(motSlewVal,0,4095,motSlewMin,200);
 
