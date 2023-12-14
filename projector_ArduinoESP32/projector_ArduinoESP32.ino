@@ -14,8 +14,9 @@
 // startup with lamp disabled!!!! Otherwise film will burn! (Actually, at startup we should advance projector to blanking point at each startup so shutter is closed)
 // add forward/backward buttons to code (currently connected but unused)
 // February 2023 Eiki UI will have settings for "safe" mode where lamp brightness is linked to speed and shutter angle to prevent film burns. This will change UI input logic.
-// Modular UI changes: Finish updateMotor() to support simple motor pot
-// Figure out ESC on/off button hack, then add ESP output to turn ESC on after boot
+// Test each part of modular UI
+// finish adding single frame button actions in callback function
+// Figure out ESC on/off button hack, then add ESP output pin to turn ESC on after boot
 // (also if ESC loses its settings then we might need to set throttle config, etc on startup too!)  
 // when slew rate is reduced, the slew buffer should be truncated so previous history doesn't influence future values when slew is turned back up (tried to fix in line 468 but failed. I should replace averaging library with my own function so I have direct access to buffer array.)
 // add debounce lib for buttons
@@ -33,6 +34,7 @@
 #include <elapsedMillis.h>      // https://github.com/pfeerick/elapsedMillis
 #include <movingAvg.h>          // https://github.com/JChristensen/movingAvg
 #include <ResponsiveAnalogRead.h> // https://github.com/dxinteractive/ResponsiveAnalogRead
+#include <Button2.h>              // https://github.com/LennartHennigs/Button2
 
 // Debug Levels (Warning: excessive debug messages might cause loss of shutter sync. Turn off if not needed.)
 int debugEncoder = 0; // serial messages for encoder count and shutterMap value
@@ -57,8 +59,8 @@ int debugLed = 0; // serial messages for LED info
 #define shutAnglePotPin 33 // analog input for shutter angle pot
 #define motDirFwdSwitch 25 // digital input for motor direction switch (forward)
 #define motDirBckSwitch 26 // digital input for motor direction switch (backward)
-#define motSingleFwdButton 27 // digital input for single frame forward button
-#define motSingleBckButton 14 // digital input for single frame backward button
+#define buttonApin 27 // digital input for single frame forward button
+#define buttonBpin 14 // digital input for single frame backward button
 #define safeSwitch 12 // switch to enable "safe mode" where lamp brightness is automatically dimmed at slow speeds
 
 
@@ -84,6 +86,12 @@ ResponsiveAnalogRead ledPot(ledPotPin, true, AnalogReadMultiplier);
 #if (enableShutterPots)
   ResponsiveAnalogRead shutBladesPot(shutBladesPotPin, true, AnalogReadMultiplier);
   ResponsiveAnalogRead shutAnglePot(shutAnglePotPin, true, AnalogReadMultiplier);
+#endif
+
+#if (enableSingleButtons)
+  // Bounce2 Library setup for single frame buttons
+  Button2 buttonA;
+  Button2 buttonB;
 #endif
 
 int ledSlewVal;
@@ -162,12 +170,18 @@ void setup() {
   pinMode(EncI, INPUT);
   if (!LedDimMode) pinMode(ledPin, OUTPUT); // only used for current-controlled dimming. Otherwise LEDC setup will take care of this
   if (enableMotSwitch) {
-      pinMode(motDirFwdSwitch, INPUT_PULLUP);
-      pinMode(motDirBckSwitch, INPUT_PULLUP);
+    pinMode(motDirFwdSwitch, INPUT_PULLUP);
+    pinMode(motDirBckSwitch, INPUT_PULLUP);
   }
   if (enableSingleButtons) {
-    pinMode(motSingleFwdButton, INPUT_PULLUP);
-    pinMode(motSingleBckButton, INPUT_PULLUP);
+    // Attach buttons (Bounce2 library handles pinmode settings for us)
+    buttonA.begin(buttonApin);
+    buttonA.setDebounceTime(5);
+    buttonA.setTapHandler(buttonTap);
+
+    buttonB.begin(buttonBpin);
+    buttonB.setDebounceTime(5);
+    buttonB.setTapHandler(buttonTap);
   }
   if (enableSafeSwitch) {
     pinMode(safeSwitch, INPUT_PULLUP);
@@ -254,7 +268,9 @@ void setup() {
 
 void loop() {
   // update every time
-  
+  buttonA.loop(); // update button managed by Bounce2 library
+  buttonB.loop(); // update button managed by Bounce2 library
+
   // update these functions @ 50 Hz
   if (timerUI >= 20) {
       as5047MagCheck(); // check for encoder magnet proximity
@@ -502,6 +518,7 @@ void updateMotor() {
     // (The slewing averager only deals with ints, so our FPS is multiplied by 100 to make it int 2400)
     int motPotFPS;
     if (enableMotSwitch) {
+      // Motor UI is switch + pot, so use normal pot scaling
       if (!digitalRead(motDirFwdSwitch)) {
         motPotFPS = mapf(motPotVal,0,4095,20,2400); // convert mot pot value to FPS x 100
       } else if (!digitalRead(motDirBckSwitch)) {
@@ -510,7 +527,9 @@ void updateMotor() {
         motPotFPS = 0;
       }
     } else {
-       // Insert code for FORWARD-STOP-BACK pot scaling
+       // Motor UI is only pot, so use Use FORWARD-STOP-BACK pot scaling
+       motPotFPS = mapf(motPotVal,0,4095,-2400,2400); // convert mot pot value to FPS x 100
+    if (motPotFPS > -20 && motPotFPS < 20) motPotFPS = 0; // add "deadband" in middle to make it easier to find the "stop" position
     }
     //int motSlewMin = 20; // the minumum slew value (1-200) REPLACED WITH GLOBAL VARIABLE
     motAvg.reading(motPotFPS); // update the average motPotFPS
@@ -544,6 +563,14 @@ void updateMotor() {
       Serial.print(motSpeedUS);
       Serial.print(", Mot PWM Duty: ");
       Serial.println(motDuty);
+    }
+}
+
+void buttonTap(Button2& btn) {
+    if (btn == buttonA) {
+      Serial.println("A clicked"); // insert single frame code here
+    } else if (btn == buttonB) {
+      Serial.println("B clicked"); // insert single frame code here
     }
 }
 
