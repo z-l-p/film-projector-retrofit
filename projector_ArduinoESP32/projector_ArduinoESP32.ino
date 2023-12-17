@@ -51,16 +51,16 @@ int debugLed = 0; // serial messages for LED info
 
 // INPUT PINS //
   // UI
-#define motPotPin 36 // analog input for motor speed pot
-#define motSlewPotPin 39 // analog input for motor slew rate pot
-#define ledPotPin 34 // analog input for LED dimming pot
-#define ledSlewPotPin 35 // analog input for LED dimming slew rate pot
-#define shutBladesPotPin 32 // analog input for # of shutter blades pot
-#define shutAnglePotPin 33 // analog input for shutter angle pot
-#define motDirFwdSwitch 25 // digital input for motor direction switch (forward)
-#define motDirBckSwitch 26 // digital input for motor direction switch (backward)
-#define buttonApin 27 // digital input for single frame forward button
-#define buttonBpin 14 // digital input for single frame backward button
+#define motPotPin 34 // analog input for motor speed pot
+#define motSlewPotPin 35 // analog input for motor slew rate pot
+#define ledPotPin 33 // analog input for LED dimming pot
+#define ledSlewPotPin 33 // analog input for LED dimming slew rate pot
+#define shutBladesPotPin 25 // analog input for # of shutter blades pot
+#define shutAnglePotPin 26 // analog input for shutter angle pot
+#define motDirFwdSwitch 27 // digital input for motor direction switch (forward)
+#define motDirBckSwitch 14 // digital input for motor direction switch (backward)
+#define buttonApin 36 // digital input for single frame forward button
+#define buttonBpin 39 // digital input for single frame backward button
 #define safeSwitch 12 // switch to enable "safe mode" where lamp brightness is automatically dimmed at slow speeds
 
 
