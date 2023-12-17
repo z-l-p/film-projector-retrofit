@@ -28,7 +28,7 @@ Remove and save the parts that you will re-use later: camtank, lamp holder, blac
 
 Lubricate projector (insert link to service manual)
 
-Drill holes in projector frame (which holes?)
+Drill holes in projector frame (Power input and fuse holder on back + UI holes on side)
 
 3D print new parts (insert link to STL files)
 
@@ -48,6 +48,18 @@ Add an XT60 male connector (wires must be long enough to reach battery) and wire
 Prepare a 5-position segment (update this to add more because we need regulator too) of eurostrip terminal block. It will be mounted on the chassis near the lamp.
 
 Power will flow from the switch through the fuse and into the terminal strip, then branch out to each major subsystem.
+
+User Interface
+==========================
+The primary controls are the (rewired) original Eiki selector switch, 2 push-buttons, and 6 potentiometers. (INSERT IMAGE OF FINISHED CONTROLS)
+
+Rewiring the Eiki selector switch (INSERT steps to remove original wires and add certain jumpers and color-coded wires to the micro-comtroller)
+
+Use the 3D-printed UI cover plate (STL FILENAME?) as a template to drill holes in the projector chassis. Some existing holes will be re-used, but others will be covered by the new plate. If your pots have anti-rotation pins, drll the appropriate holes for them (SHOW IMAGE).
+
+Test-fit the pots and plan your wiring. Each pot will share a ground and 3.3v connection, so there will be short jumpers from pot to pot.
+
+Before soldering, add a .01uF ("103") cap between ground and the wiper of each pot. This is essential to prevent noise on the ESP32 ADCs (which will be seen as moter speed fluctuations and lamp flicker). (PHOTO)
 
 Camtank and Shutter Pulley
 ==========================
