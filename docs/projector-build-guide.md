@@ -51,15 +51,19 @@ Power will flow from the switch through the fuse and into the terminal strip, th
 
 User Interface
 ==========================
-The primary controls are the (rewired) original Eiki selector switch, 2 push-buttons, and 6 potentiometers. (INSERT IMAGE OF FINISHED CONTROLS)
+The primary controls are the (rewired) original Eiki selector switch, 2 push-buttons, and 6 potentiometers. Common 17mm pots will fit. The pot's threaded collar must be at least 6mm deep. 8mm would be ideal. (INSERT IMAGE OF FINISHED CONTROLS)
 
-Rewiring the Eiki selector switch (INSERT steps to remove original wires and add certain jumpers and color-coded wires to the micro-comtroller)
-
-Use the 3D-printed UI cover plate (STL FILENAME?) as a template to drill holes in the projector chassis. Some existing holes will be re-used, but others will be covered by the new plate. If your pots have anti-rotation pins, drll the appropriate holes for them (SHOW IMAGE).
+The 3D-printed UI cover plate ("eiki_control_panel.stl") fits on the outside of the projector chassis. Use it as a template to drill holes in the chassis for each control. (Some existing holes will be re-used, but others will be covered by the cover plate plate.) If your pots have anti-rotation pins, drll the appropriate holes for them (SHOW IMAGE). 
 
 Test-fit the pots and plan your wiring. Each pot will share a ground and 3.3v connection, so there will be short jumpers from pot to pot.
 
 Before soldering, add a .01uF ("103") cap between ground and the wiper of each pot. This is essential to prevent noise on the ESP32 ADCs (which will be seen as moter speed fluctuations and lamp flicker). (PHOTO)
+
+Rewire the existing Eiki selector switch (INSERT steps to remove original wires and add ground jumpers and color-coded wires to the micro-comtroller)
+
+Assembly is a bit tricky: Push the controls through the chassis from the inside while holding the cover plate on the outside. Tighten it all together using the nuts for each control.
+
+Do the same with the Eiki selector switch. There are holes in the cover plate to clear the mounting screws. Replace the selector knob.
 
 Camtank and Shutter Pulley
 ==========================
@@ -139,9 +143,9 @@ NEED PICTURE OF WIRING ON BACK OF BOARD
 
 4) Mount the encoder board to the 3D-printed encoder bracket ("encoder_bracket.stl"") using two M2.3 x 5mm self-tapping screws.
 
-Encoder Mounting
+Encoder Mounting and Calibration
 ================
 
-Mount the encoder bracket to the motor bracket with two M3 x 8mm screws and washers. Adjust bracket so sensor chip is a few mm away from spinning magnet and centered in both dimensions. (Add washers behind encoder bracket if you need to move it closer to you.)
+(Motor must be mounted first) Mount the encoder bracket to the motor bracket with two M3 x 8mm screws and washers. Adjust bracket so sensor chip is a few mm away from spinning magnet and centered in both dimensions. (Add washers behind encoder bracket if you need to move it closer to you.)
 
-h1 { margin-bottom: 0.08in }h1.western { font-family: "Arial", sans-serif; font-size: 18pt }h1.cjk { font-family: "Arial"; font-size: 18pt }h1.ctl { font-family: "Arial"; font-size: 18pt }p { margin-bottom: 0.1in; line-height: 120% }
+After the encoder has been wired to the ESP32, the magnet on the shutter pulley needs to be rotated to calibrate the digital shutter with the pulldown of each frame. In the code, set debugEncoder to 1. In the Arduino serial monitor you should see message whenever you turn the inching knob. (CONTINUE WITH FULL CALIBRATION INFO)  
