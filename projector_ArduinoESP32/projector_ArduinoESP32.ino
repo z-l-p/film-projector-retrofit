@@ -19,7 +19,6 @@
 // Figure out ESC on/off button hack, then add ESP output pin to turn ESC on after boot
 // (also if ESC loses its settings then we might need to set throttle config, etc on startup too!)  
 // when slew rate is reduced, the slew buffer should be truncated so previous history doesn't influence future values when slew is turned back up (tried to fix in line 468 but failed. I should replace averaging library with my own function so I have direct access to buffer array.)
-// add debounce lib for buttons
 // add RGB LED feedback for battery charge, etc (or just buy batt meter board?)
 
 // TODO Nice but not essential:
@@ -38,6 +37,7 @@
 
 // Debug Levels (Warning: excessive debug messages might cause loss of shutter sync. Turn off if not needed.)
 int debugEncoder = 0; // serial messages for encoder count and shutterMap value
+int debugUI = 0; // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0; // serial messages for frame count and FPS
 int debugMotor = 1; // serial messages for motor info
 int debugLed = 0; // serial messages for LED info
@@ -457,6 +457,7 @@ void updateShutterMap(byte shutterBlades, float shutterAngle) {
 
 void readPots() {
   // update each pot using responsiveRead library, then get its value
+  // NOTE: buttons are read with a callback (setTapHandler) so they aren't in the loop
   ledPot.update();
   motPot.update();
   ledPotVal = ledPot.getValue();
@@ -472,11 +473,39 @@ void readPots() {
   #if (enableShutterPots) 
     shutBladesPot.update();
     shutAnglePot.update();
-    shutBladesVal = shutBladesPot.getValue();
-    shutAngleVal = shutAnglePot.getValue();
-    shutBladesVal = map(shutBladesVal, 0, 4095, 1, 3); // map ADC input to range of number of shutter blades
-    shutAngleVal = mapf(shutAngleVal, 0, 4095, 0.1, 1.0); // map ADC input to range of shutter angle
+    int shutBladesVal1 = shutBladesPot.getValue();
+    int shutAngleVal1 = shutAnglePot.getValue();
+    shutBladesVal = map(shutBladesVal1, 0, 4095, 1, 3); // map ADC input to range of number of shutter blades
+    shutAngleVal = mapf(shutAngleVal1, 0, 4095, 0.1, 1.0); // map ADC input to range of shutter angle
   #endif
+
+  #if (enableSafeSwitch)
+    safeMode = !digitalRead(safeSwitch); // active low so we invert it
+  #endif
+
+  if (debugUI) {
+    Serial.print("Motor Speed Pot: ");
+    Serial.print(motPotVal);
+    Serial.print(", Lamp Brightness Pot: ");
+    Serial.print(ledPotVal);
+    #if (enableSlewPots)
+      Serial.print(", Motor Slew Pot: ");
+      Serial.print(motSlewVal);
+      Serial.print(", Lamp Slew Pot: ");
+      Serial.print(ledSlewVal);
+    #endif
+    #if (enableShutterPots) 
+      Serial.print(", Shutter Blade Pot: ");
+      Serial.print(shutBladesVal1);
+      Serial.print(", Shutter Angle Pot: ");
+      Serial.print(shutAngleVal1);
+    #endif
+    #if (enableSafeSwitch)
+      Serial.print(", Safe Switch State: ");
+      Serial.print(safeMode);
+    #endif
+    Serial.println("");
+  }
 }
 
 // compute LED brightness (note that the ISR ultimately controls the LED state since it acts as the digital shutter)
@@ -568,9 +597,15 @@ void updateMotor() {
 
 void buttonTap(Button2& btn) {
     if (btn == buttonA) {
-      Serial.println("A clicked"); // insert single frame code here
+      if (debugUI) {
+        Serial.println("Button A clicked"); 
+      }
+      // insert single frame code here
     } else if (btn == buttonB) {
-      Serial.println("B clicked"); // insert single frame code here
+      if (debugUI) {
+        Serial.println("Button B clicked"); // insert single frame code here
+      }
+      // insert single frame code here
     }
 }
 
