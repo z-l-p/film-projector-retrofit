@@ -18,12 +18,12 @@ heatsinkZ = 20; // size of LED heatsink
 // For Eiki only //
 // ------------- //
 
-eiki_motormount(); // Mount to attach motor and rotary encoder - PRINT WITH SUPPORTS
+//eiki_motormount(); // Mount to attach motor and rotary encoder - PRINT WITH SUPPORTS
 //eiki_encoder_magnet_mount(); // 2-piece threaded part to attach encoder magnet to drive shaft - PRINT WITH 0.1mm LAYERS 
 //eiki_camtank_cover(); // Cover for hole in camtank after shutter removal - PRINT ROTATED, FLAT SIDE DOWN
 //eiki_LED_mount();
 //eiki_LED_lens_holder(1); // export STL with 0 argument for holder, 1 argument for holder fingers
-//eiki_control_panel(); // flat faceplate for control panel on side of projector
+eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
 //eiki_power_switch_ring(); // adapter ring to mount power switch in hole for threading lamp
 
 // For Eumig P26 only (NOTE: Other P26 parts were created in Blender! They aren't in this file.)
@@ -50,10 +50,17 @@ module eiki_power_switch_ring() {
 // flat faceplate for control panel on side of projector
 // NOTE: It barely fits on my 200mm 3D printer bed. Orient diagonally and increase the rounded_rect corner radius to make it fit.
 module eiki_control_panel() {
-    plateDims = [250, 40, 2]; // dims of faceplate
+    plateDims = [250, 40, 1]; // dims of faceplate
     potD = 7.2; // dia of hole for potentiometer
+    potPinD = 3; // dia of hole for potentiometer anti-twist pin (only used for audio volume pot because others mount to metal chassis)
+    potPinOffset = 7.8; // offset of hole for potentiometer anti-twist pin
     buttonD = 6.6; // dia of hole for pushbutton
     selectorD = 14; // dia of hole for original Eiki selector switch
+    selectroOffsetX = 29.2; // location of selector switch
+    selectroOffsetY = 12.4; // location of selector switch
+    selectorMountingD = 7.2; // dia of hole to clear the heads of original Eiki selector switch mount screws
+    volumeOffsetX = 233; // location of audio volume pot
+    volumeOffsetY = 20; // location of audio volume pot
     screwD = 3; // dia of hole for screws that hold faceplate onto projector
     rearThick = 2.6; // thickness of eiki metal housing
     difference() {
@@ -64,7 +71,9 @@ module eiki_control_panel() {
             translate([232, 19, -rearThick]) rounded_rect(33, 20, 3, rearThick); // rear pad to fill rectangular hole
         }
         //faceplate holes (left to right)
-        translate([29,11,-0.1]) cylinder(d=selectorD, h=5, $fn=36); // selector switch
+        translate([selectroOffsetX,selectroOffsetY,-0.1]) cylinder(d=selectorD, h=5, $fn=36); // selector switch
+        translate([selectroOffsetX+22,selectroOffsetY,-0.1]) cylinder(d=selectorMountingD, h=5, $fn=36); // selector switch mount screw
+        translate([selectroOffsetX-22,selectroOffsetY,-0.1]) cylinder(d=selectorMountingD, h=5, $fn=36); // selector switch mount screw
         translate([60,33,-0.1]) cylinder(d=buttonD, h=5, $fn=36); // frame - button
         translate([72.5,20,-0.1]) cylinder(d=screwD, h=5, $fn=24); // screw hole left
         translate([80,33,-0.1]) cylinder(d=buttonD, h=5, $fn=36); // frame + button
@@ -75,7 +84,8 @@ module eiki_control_panel() {
         translate([175,19.6,-0.1]) cylinder(d=potD, h=20, $fn=36, center=true); // shutter blades pot
         translate([190,20,-0.1]) cylinder(d=screwD, h=5, $fn=24); // screw hole left
         translate([204.4,19.6,-0.1]) cylinder(d=potD, h=20, $fn=36, center=true); // shutter angle pot
-        translate([233,20,0]) cylinder(d=potD, h=20, $fn=36, center=true); // volume pot
+        translate([volumeOffsetX,volumeOffsetY,0]) cylinder(d=potD, h=20, $fn=36, center=true); // audio volume pot
+        translate([volumeOffsetX-potPinOffset,volumeOffsetY,-rearThick]) cylinder(d=potPinD, h=rearThick, $fn=24); // pin for audio volume pot
         
     }
 }
