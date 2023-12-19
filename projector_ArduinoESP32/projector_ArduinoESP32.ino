@@ -37,9 +37,9 @@
 
 // Debug Levels (Warning: excessive debug messages might cause loss of shutter sync. Turn off if not needed.)
 int debugEncoder = 0; // serial messages for encoder count and shutterMap value
-int debugUI = 0; // serial messages for user interface inputs (pots, buttons, switches)
+int debugUI = 1; // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0; // serial messages for frame count and FPS
-int debugMotor = 1; // serial messages for motor info
+int debugMotor = 0; // serial messages for motor info
 int debugLed = 0; // serial messages for LED info
 
 // Basic setup options (enable the options based on your hardware choices)
@@ -53,7 +53,7 @@ int debugLed = 0; // serial messages for LED info
   // UI
 #define motPotPin 34 // analog input for motor speed pot
 #define motSlewPotPin 35 // analog input for motor slew rate pot
-#define ledPotPin 33 // analog input for LED dimming pot
+#define ledPotPin 32 // analog input for LED dimming pot
 #define ledSlewPotPin 33 // analog input for LED dimming slew rate pot
 #define shutBladesPotPin 25 // analog input for # of shutter blades pot
 #define shutAnglePotPin 26 // analog input for shutter angle pot
@@ -175,11 +175,11 @@ void setup() {
   }
   if (enableSingleButtons) {
     // Attach buttons (Bounce2 library handles pinmode settings for us)
-    buttonA.begin(buttonApin);
+    buttonA.begin(buttonApin, INPUT_PULLUP, true);
     buttonA.setDebounceTime(5);
     buttonA.setTapHandler(buttonTap);
 
-    buttonB.begin(buttonBpin);
+    buttonB.begin(buttonBpin, INPUT_PULLUP, true);
     buttonB.setDebounceTime(5);
     buttonB.setTapHandler(buttonTap);
   }
@@ -482,26 +482,39 @@ void readPots() {
   #if (enableSafeSwitch)
     safeMode = !digitalRead(safeSwitch); // active low so we invert it
   #endif
+  
+
 
   if (debugUI) {
-    Serial.print("Motor Speed Pot: ");
+    if (enableMotSwitch) {
+      // print selector switch debug info , even though we aren't using it inside this function
+      // Motor UI is switch + pot, so use normal pot scaling
+      if (!digitalRead(motDirFwdSwitch)) {
+        Serial.print("Mot For, ");
+      } else if (!digitalRead(motDirBckSwitch)) {
+        Serial.print("Mot Back, ");
+      } else {
+        Serial.print("Mot Stop, ");
+      }
+    }
+    Serial.print("Mot Speed Pot: ");
     Serial.print(motPotVal);
-    Serial.print(", Lamp Brightness Pot: ");
+    Serial.print(", Lamp Bright Pot: ");
     Serial.print(ledPotVal);
     #if (enableSlewPots)
-      Serial.print(", Motor Slew Pot: ");
+      Serial.print(", Mot Slew Pot: ");
       Serial.print(motSlewVal);
       Serial.print(", Lamp Slew Pot: ");
       Serial.print(ledSlewVal);
     #endif
     #if (enableShutterPots) 
-      Serial.print(", Shutter Blade Pot: ");
+      Serial.print(", Shut Blade Pot: ");
       Serial.print(shutBladesVal1);
-      Serial.print(", Shutter Angle Pot: ");
+      Serial.print(", Shut Angle Pot: ");
       Serial.print(shutAngleVal1);
     #endif
     #if (enableSafeSwitch)
-      Serial.print(", Safe Switch State: ");
+      Serial.print(", Safe Switch: ");
       Serial.print(safeMode);
     #endif
     Serial.println("");
