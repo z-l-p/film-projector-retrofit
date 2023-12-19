@@ -3,6 +3,8 @@ SPECTRAL Projector Conversion Guide
 
 *Work In Progress! Composed in markdown format for github, to be adapted to filmlabs.org wiki*
 
+Repository: [https://github.com/z-l-p/film-projector-retrofit](https://github.com/z-l-p/film-projector-retrofit)
+
 
 Summary
 =======
@@ -41,7 +43,9 @@ There are 2 possible power sources: A 12V DC adapter with standard coaxial jack 
 
 All wiring should be 18AWG (1mm²) or larger, because there are high currents involved.
 
-Mount switch, DC jack, and fuse holder in the holes you drilled in projector chassis.
+Remove the Eiki threading light and insert the 3D-printed collar ("eiki_pwr_switch_adapter.stl") into the hole. Wire the 3-position SPDT switch before inserting into hole. (There is very little room hehind the switch, so insulate the terminals with heat-shrink tubing and route the cables carefully.)
+
+ switch, DC jack, and fuse holder in the holes you drilled in projector chassis.
 
 Add an XT60 male connector (wires must be long enough to reach battery) and wire the switch so it selects between DC and battery.
 
@@ -51,9 +55,9 @@ Power will flow from the switch through the fuse and into the terminal strip, th
 
 User Interface
 ==========================
-The primary controls are the (rewired) original Eiki selector switch, 2 push-buttons, and 6 potentiometers. Common 17mm pots will fit. The pot's threaded collar must be at least 6mm deep. 8mm would be ideal. (INSERT IMAGE OF FINISHED CONTROLS)
+The primary controls are the (rewired) original Eiki selector switch, 2 push-buttons, and 6 potentiometers. Pots must be 17mm diameter or smaller. The pot's threaded collar must be at least 6mm deep. 8mm would be ideal. (INSERT IMAGE OF FINISHED CONTROLS)
 
-The 3D-printed UI cover plate ("eiki_control_panel.stl") fits on the outside of the projector chassis. Use it as a template to drill holes in the chassis for each control. (Some existing holes will be re-used, but others will be covered by the cover plate plate.) If your pots have anti-rotation pins, drll the appropriate holes for them (SHOW IMAGE). 
+The 3D-printed UI cover plate ("eiki_control_panel.stl") fits on the outside of the projector chassis. Use it as a template to mark the drill holes in the chassis for each control. (Some existing holes will be re-used, and others will be covered by the plate.) If your pots have anti-rotation pins, drll the appropriate holes for them in the chassis (SHOW IMAGE). 
 
 Test-fit the pots and plan your wiring. Each pot will share a ground and 3.3v connection, so there will be short jumpers from pot to pot.
 
@@ -64,6 +68,8 @@ Rewire the existing Eiki selector switch (INSERT steps to remove original wires 
 Assembly is a bit tricky: Push the controls through the chassis from the inside while holding the cover plate on the outside. Tighten it all together using the nuts for each control.
 
 Do the same with the Eiki selector switch. There are holes in the cover plate to clear the mounting screws. Replace the selector knob.
+
+Test each control by enabling debugging in the code ("debugUI = 1").
 
 Camtank and Shutter Pulley
 ==========================

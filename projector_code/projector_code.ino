@@ -51,16 +51,16 @@ int debugLed = 0; // serial messages for LED info
 
 // INPUT PINS //
   // UI
-#define motPotPin 34 // analog input for motor speed pot
-#define motSlewPotPin 35 // analog input for motor slew rate pot
-#define ledPotPin 32 // analog input for LED dimming pot
-#define ledSlewPotPin 33 // analog input for LED dimming slew rate pot
-#define shutBladesPotPin 25 // analog input for # of shutter blades pot
-#define shutAnglePotPin 26 // analog input for shutter angle pot
+#define motPotPin 33 // analog input for motor speed pot
+#define motSlewPotPin 32 // analog input for motor slew rate pot
+#define ledPotPin 35 // analog input for LED dimming pot
+#define ledSlewPotPin 34 // analog input for LED dimming slew rate pot
+#define shutBladesPotPin 39 // analog input for # of shutter blades pot
+#define shutAnglePotPin 36 // analog input for shutter angle pot
 #define motDirFwdSwitch 27 // digital input for motor direction switch (forward)
 #define motDirBckSwitch 14 // digital input for motor direction switch (backward)
-#define buttonApin 36 // digital input for single frame forward button
-#define buttonBpin 39 // digital input for single frame backward button
+#define buttonApin 26 // digital input for single frame forward button
+#define buttonBpin 25 // digital input for single frame backward button
 #define safeSwitch 12 // switch to enable "safe mode" where lamp brightness is automatically dimmed at slow speeds
 
 
@@ -75,8 +75,8 @@ int debugLed = 0; // serial messages for LED info
 #define ledPin 2  // PWM output for LED (On 38pin HiLetGo ESP32 board, GPIO 2 is the built-in LED)
 
 // ResponsiveAnalogRead Library Setup https://github.com/dxinteractive/ResponsiveAnalogRead#analog-resolution
-int AnalogReadThresh = 64; // "Activity Threshold" for ResponsiveAnalogRead library (higher = less noise but may ignore small changes)
-float AnalogReadMultiplier = 0.001; // "Snap Multiplier" for ResponsiveAnalogRead library (lower = smoother)
+int AnalogReadThresh = 60; // "Activity Threshold" for ResponsiveAnalogRead library (higher = less noise but may ignore small changes)
+float AnalogReadMultiplier = 0.1; // "Snap Multiplier" for ResponsiveAnalogRead library (lower = smoother)
 ResponsiveAnalogRead motPot(motPotPin, true, AnalogReadMultiplier);
 ResponsiveAnalogRead ledPot(ledPotPin, true, AnalogReadMultiplier);
 #if (enableSlewPots) 
