@@ -37,9 +37,9 @@
 
 // Debug Levels (Warning: excessive debug messages might cause loss of shutter sync. Turn off if not needed.)
 int debugEncoder = 0; // serial messages for encoder count and shutterMap value
-int debugUI = 1; // serial messages for user interface inputs (pots, buttons, switches)
+int debugUI = 0; // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0; // serial messages for frame count and FPS
-int debugMotor = 0; // serial messages for motor info
+int debugMotor = 1; // serial messages for motor info
 int debugLed = 0; // serial messages for LED info
 
 // Basic setup options (enable the options based on your hardware choices)
@@ -97,7 +97,7 @@ ResponsiveAnalogRead ledPot(ledPotPin, true, AnalogReadMultiplier);
 int ledSlewVal;
 int ledSlewMin = 1; // the minumum slew value when knob is turned down (1-200)
 int motSlewVal;
-int motSlewMin = 20; // the minumum slew value when knob is turned down (1-200)
+int motSlewMin = 10; // the minumum slew value when knob is turned down (1-200)
 int motSlewValOld;
 int shutBladesVal;
 int shutBladesValOld;
@@ -575,7 +575,7 @@ void updateMotor() {
     }
     //int motSlewMin = 20; // the minumum slew value (1-200) REPLACED WITH GLOBAL VARIABLE
     motAvg.reading(motPotFPS); // update the average motPotFPS
-    motSlewVal = map(motSlewVal,0,4095,motSlewMin,200);
+    int motSlewValScaled = map(motSlewVal,0,4095,motSlewMin,200);
 
     // CURRRENTLY BROKEN - FIX IT LATER
     // if (motSlewVal <= motSlewMin && motSlewValOld != motSlewVal) {
@@ -583,7 +583,7 @@ void updateMotor() {
     //   Serial.println("MotSlewVal RESET");
     // }
     // motSlewValOld = motSlewVal;
-    FPStarget = motAvg.getAvg(motSlewVal)/100.0; // use slewed value for target FPS (dividing by 100 to get floating point FPS)
+    FPStarget = motAvg.getAvg(motSlewValScaled)/100.0; // use slewed value for target FPS (dividing by 100 to get floating point FPS)
     // These values may be negative, but fscale only handles positive values, so...
     float FPStargetScaled;
     if (FPStarget < 0.0) {
@@ -598,7 +598,7 @@ void updateMotor() {
     ledcWrite(motPWMChannel, motDuty); // update motor speed
     if (debugMotor) {
       Serial.print("Mot Slew: ");
-      Serial.print(motSlewVal);
+      Serial.print(motSlewValScaled);
       Serial.print(", FPS Target: ");
       Serial.print(FPStarget);
       Serial.print(", Mot uS: ");
