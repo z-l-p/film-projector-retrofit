@@ -72,6 +72,7 @@ int debugLed = 0; // serial messages for LED info
 
 // OUTPUT PINS //
 #define escPin 22 // PWM output for ESC
+#define escProgramPin 21 // serial output to program ESC (needs 10k resistor to 3.3v)
 #define ledPin 2  // PWM output for LED (On 38pin HiLetGo ESP32 board, GPIO 2 is the built-in LED)
 
 // ResponsiveAnalogRead Library Setup https://github.com/dxinteractive/ResponsiveAnalogRead#analog-resolution
@@ -155,6 +156,21 @@ volatile long frame = 0;    // current frame number (frame counter)
 volatile float FPSreal = 0; // measured FPS
          float FPStarget = 0; // requested FPS
 
+// Settings for HobbyWing Quicrun Fusion SE motor
+#define ESC_WRITE_BIT_TIME_WIDTH 2500 // uSec length of each pulse ("2500" = 400 baud)
+char ESC_settings[] = {
+  0, // RPM Throttle Matching enabled
+  2, // 3S LiPo cells
+  2, // Medium cutoff voltage
+  0, // 105C temp cutoff
+  0, // CCW rotation
+  0, // 6V BEC
+  0, // Drag brake force disabled
+  4, // Drag brake rate 5
+  3, // Max reverse force 100%
+  5, 0, 4, 2, 0, 0 // extra bytes sniffed with logic analyzer, don't know what they're for
+  };
+
 // timers
 elapsedMicros framePeriod; // microseconds since last frame transition (used for FPS calc)
 elapsedMillis timerUI; // MS since last time we checked/updated the user interface
@@ -219,6 +235,12 @@ void setup() {
   Serial.println("SPECTRAL Projector Controller");
   Serial.println("-----------------------------");
   
+  // reset ESC settings if user holds down both buttons during startup
+  if (digitalRead(buttonApin) == 0 && digitalRead(buttonBpin) == 0) {
+    ESCprogram();
+    while(1); // don't continue setup since the ESC needs to be rebooted before we can continue
+  }
+
   // Set rotation direction (see AS5047 datasheet page 17)
   Settings1 settings1;
   settings1.values.dir = 0;
@@ -620,6 +642,102 @@ void buttonTap(Button2& btn) {
       }
       // insert single frame code here
     }
+}
+
+// ESC programming via Arduino, for HobbyWing Quicrun Fusion SE motor
+void ESCprogram() {
+    // adapted from these sources: 
+  // https://www.rcgroups.com/forums/showthread.php?1454178-Reversed-Engineered-a-ESC-Programming-Card
+  // https://www.rcgroups.com/forums/showthread.php?1567736-Program-configure-ESC-with-Arduino
+
+  // (ESC settings chart and LED programmer use options 1-9 but the data is 0-8)
+  // BEC power turns on 7 ms after power is applied.
+  // If program data line is pulled high at boot, ESC goes into program mode ...
+  // ESC sends init message 140 ms after power is applied, then waits for ACK from programmer (responds about 1200 ms after init msg starts)
+  // if no ACK within 4 sec from init message start, ESC continues to boot (motor winding beeps for LiPo count then periodic single pulses on programmer line)
+  // if ACK, then boot pauses indefinitely, waiting for settings from programmer
+  // After programmer sends settings, ESC responds with ACK and pauses indefinitely
+  // Then ESC power must be toggled to reboot with new settings. (There is no way for programmer to send a "reboot" command)
+
+  Serial.println("Waiting for HobbyWing ESC ...");
+
+  // wait for beginning of init message from ESC
+  pinMode(escProgramPin, OUTPUT);
+  digitalWrite(escProgramPin, HIGH);
+  pinMode(escProgramPin, INPUT_PULLUP);
+  while (digitalRead(escProgramPin) == 0);
+  while (digitalRead(escProgramPin) == 1);
+  while (digitalRead(escProgramPin) == 0);
+  while (digitalRead(escProgramPin) == 1);
+  Serial.println("ESC booted");
+  delay(1300); // wait for ESC init message to pass before sending ACK (we don't parse it, just waiting for it to pass)
+
+  Serial.println("Sending ACK...");
+  ESC_send_ACK(); // tell ESC that we're here
+  delay(100); // wait before sending settings
+
+  Serial.println("Sending Settings...");
+  for (byte i = 0; i < sizeof(ESC_settings); i++) {
+    ESC_ser_write(ESC_settings[i]);
+  }
+  ESC_send_ACK(); // tell ESC that we're done
+
+  Serial.println("DONE");
+
+}
+
+// writes a byte to a psuedo 10-bit UART
+void ESC_ser_write(unsigned char x)
+{  
+    digitalWrite(escProgramPin, HIGH); // make sure
+    pinMode(escProgramPin, OUTPUT);
+    delayMicroseconds(ESC_WRITE_BIT_TIME_WIDTH);
+
+    digitalWrite(escProgramPin, LOW); // signal start
+    delayMicroseconds(ESC_WRITE_BIT_TIME_WIDTH);
+     
+    digitalWrite(escProgramPin, HIGH); // first bit always 1
+    delayMicroseconds(ESC_WRITE_BIT_TIME_WIDTH);
+     
+    digitalWrite(escProgramPin, LOW); // 2nd bit always 0
+    delayMicroseconds(ESC_WRITE_BIT_TIME_WIDTH);
+     
+    // send the byte LSB first
+    char i;
+    for (i = 0; i < 8; i++)
+    {
+        if ((x & (1 << i)) == 0)
+        {
+            digitalWrite(escProgramPin, LOW);
+        }
+        else
+        {
+            digitalWrite(escProgramPin, HIGH);
+        }
+        delayMicroseconds(ESC_WRITE_BIT_TIME_WIDTH);
+    }
+    digitalWrite(escProgramPin, HIGH); // leave as input
+    pinMode(escProgramPin, OUTPUT);
+}
+
+// must be sent after receiving configuration from ESC upon initialization
+void ESC_send_ACK()
+{  
+    digitalWrite(escProgramPin, HIGH); // make sure
+    pinMode(escProgramPin, OUTPUT); // assert pin
+    delayMicroseconds(ESC_WRITE_BIT_TIME_WIDTH);
+// send pulses
+    char i;
+    for (i = 0; i < 6; i++)
+    {
+    digitalWrite(escProgramPin, LOW); // signal start
+    delayMicroseconds(ESC_WRITE_BIT_TIME_WIDTH);
+     
+    digitalWrite(escProgramPin, HIGH); // first bit always 1
+    delayMicroseconds(ESC_WRITE_BIT_TIME_WIDTH);
+    }
+     pinMode(escProgramPin, INPUT_PULLUP); // float pin
+    
 }
 
 // map function like Arduino core, but for floats
