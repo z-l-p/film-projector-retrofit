@@ -23,8 +23,11 @@ heatsinkZ = 20; // size of LED heatsink
 //eiki_camtank_cover(); // Cover for hole in camtank after shutter removal - PRINT ROTATED, FLAT SIDE DOWN
 //eiki_LED_mount();
 //eiki_LED_lens_holder(1); // export STL with 0 argument for holder, 1 argument for holder fingers
-eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
+//eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
 //eiki_power_switch_ring(); // adapter ring to mount power switch in hole for threading lamp
+//eiki_terminal_block_mount(); // mount to hold electrical terminal blocks
+eiki_cable_clip(); // cable clip that mounts on bosses inside projector
+//eiki_cable_clip_mount(); // expanding cleat to insert into large holes inside projector
 
 // For Eumig P26 only (NOTE: Other P26 parts were created in Blender! They aren't in this file.)
 // ------------------ //
@@ -45,6 +48,100 @@ module eiki_power_switch_ring() {
         }
         cylinder(d=12, h=10); // inner
     }
+}
+
+// cable clip that mounts on bosses inside projector
+module eiki_cable_clip() {
+    mountHoleD = 3.4;
+    mountX = 15;
+    mountZ = 2;
+    
+    difference() {
+        translate([-mountX/2,-mountX/2,0]) cube([mountX,mountX,mountZ]); // base
+        cylinder(d=mountHoleD, h=mountZ+1, $fn=24); // mount hole
+    }
+    translate([mountX/2-mountZ,0,0]) wing(); // wing1
+    translate([-mountX/2,0,0]) wing(); // wing2
+    translate([-mountX/2,-mountX/2,mountZ]) cube([mountX,mountZ,mountZ/2]); // side rail 1
+    translate([-mountX/2,mountX/2-mountZ,mountZ]) cube([mountX,mountZ,mountZ/2]); // side rail 2
+    
+    module wing() {
+        difference() {
+            translate([0,0,mountZ]) rotate([0,90,0]) cylinder(d=mountX, h=mountZ, $fn=64); // wing cylinder
+            translate([-1,0,mountZ-4.3]) rotate([45,0,0]) cube([6,6,6]); // subtract cutout
+            translate([0,0,-25]) cube([50,50,50], center=true); // cut off bottom
+        }
+    }
+}
+
+// expanding cleat to insert into large holes inside projector
+module eiki_cable_clip_mount(){
+    pillarHoleD = 5.6; // inside dia of pillar hole on projector
+    pillarHoleZ = 20; // depth of pillar hole on projector
+    
+    mountHoleD = 3.2;
+    mountHoleZ = 6; // depth of mount screw hole inside this mount
+
+    
+    difference() {
+        union() {
+            cylinder(d=pillarHoleD, h=pillarHoleZ-2, $fn=24); // outer cylinder
+            translate([0,0,pillarHoleZ-2]) cylinder(d1=pillarHoleD, d2=pillarHoleD-2, h=2, $fn=24); // outer cylinder taper
+            cylinder(d=21, h=1, $fn=6); // ring
+        }
+        cylinder(d=mountHoleD, h=mountHoleZ-4, $fn=32); // hole
+        translate([0,0,mountHoleZ-4]) cylinder(d1=mountHoleD, d2=mountHoleD-1, h=4, $fn=32); // hole top taper
+        translate([-5,-(mountHoleD-1.2)/2,1]) cube([10,mountHoleD-1.2,pillarHoleZ+1]); // slit
+    }
+}
+
+// mount to hold 2 electrical terminal blocks
+module eiki_terminal_block_mount() {
+    baseZ = 8;
+    baseY = 48;
+    
+    term1X = 27;
+    term1MountCenterX=10;
+    term1OffsetY = 10;
+    
+    term2X = 20;
+    term2MountCenterX=37;
+    term2OffsetY = 5;
+    term2Z = baseZ+18;
+    
+    mountHoleLoc = ([10,16,0]);
+    mountHoleD = 3.2;
+    termMountHoleD = 2.5;
+    
+    tabX = 33;
+    tabY = 15;
+    tabZ = 3;
+    tabOffsetY = 20.4;
+ 
+    // main part
+    difference() {
+        translate([(term1X+term2X)/2,baseY/2,0]) rounded_rect(term1X+term2X,baseY,baseZ,3); // base of terminal 1 + terminal2
+        translate(mountHoleLoc) cylinder(d=mountHoleD, h=50, $fn=24); // mount hole for the object
+        translate([mountHoleLoc[0],mountHoleLoc[1],3]) cylinder(d=mountHoleD*2.6, h=50, $fn=24); // pocket to clear head
+        translate([term1MountCenterX,term1OffsetY,0]) term_holes(); // holes for terminal block 1
+    }
+    // tower for term 2
+    difference() {
+        translate([term1X+term2X/2,baseY/2-2,0]) rounded_rect(term2X,baseY-4,term2Z,3); // tower for terminal 2
+        translate([term2MountCenterX,term2OffsetY,term2Z-8]) term_holes(); // holes for terminal block 2
+        translate([0,-9,baseZ]) rotate([0,90,0]) cylinder(d=35, h=100, $fn=96); // undercut for cable clearance
+    }
+    // anti-rotation tab for bottom
+    translate([tabX/2,tabY/2+tabOffsetY,-tabZ]) rounded_rect(tabX,tabY,tabZ,2); // anti-rotation tab
+
+    module term_holes() {
+        cylinder(d=termMountHoleD, h=50, $fn=24); // bottom mount hole for terminal strip
+        translate([0,30,0]) cylinder(d=termMountHoleD, h=50, $fn=24); // top mount hole for terminal strip
+    }
+
+    
+
+    
 }
 
 // flat faceplate for control panel on side of projector
