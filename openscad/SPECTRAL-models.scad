@@ -24,9 +24,9 @@ heatsinkZ = 20; // size of LED heatsink
 //eiki_LED_mount();
 //eiki_LED_lens_holder(1); // export STL with 0 argument for holder, 1 argument for holder fingers
 //eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
-//eiki_power_switch_ring(); // adapter ring to mount power switch in hole for threading lamp
+eiki_power_switch_ring(); // adapter ring to mount power switch in hole for threading lamp
 //eiki_terminal_block_mount(); // mount to hold electrical terminal blocks
-eiki_cable_clip(); // cable clip that mounts on bosses inside projector
+//eiki_cable_clip(); // cable clip that mounts on bosses inside projector
 //eiki_cable_clip_mount(); // expanding cleat to insert into large holes inside projector
 
 // For Eumig P26 only (NOTE: Other P26 parts were created in Blender! They aren't in this file.)
@@ -41,13 +41,31 @@ eiki_cable_clip(); // cable clip that mounts on bosses inside projector
 // adapter ring to mount power switch in hole for threading lamp
 module eiki_power_switch_ring() {
     $fn=48;
+    flangeZ = 2;
+    chassisZ = 2.6;
+    slotWidth = 1.6;
+    holeOD = 16.4;
+    holeID = 12;
+    FlangeD = 24;
+    
+    satelliteD = 9;
+    satelliteOffset = 26;
+    satelliteAngle = 38;
+    
     difference() {
         union() {
-            cylinder(d=20, h=1.2); // outer flange
-            cylinder(d=16.4, h=1.2+2.6); // outer
+            hull() {
+                cylinder(d=FlangeD, h=flangeZ); // outer flange
+                rotate([0,0,satelliteAngle]) translate([0,satelliteOffset-3,0]) cylinder(d=satelliteD+3, h=flangeZ); // satellite flange
+            }
+            cylinder(d=holeOD, h=flangeZ+chassisZ); // outer
+            
         }
-        cylinder(d=12, h=10); // inner
+        cylinder(d=holeID, h=10); // inner
+        rotate([0,0,satelliteAngle]) translate([0,satelliteOffset,0]) cylinder(d=satelliteD, h=10); // satellite hole
     }
+    
+    translate([-slotWidth/2,-(holeID/2+slotWidth/2),0]) cube([slotWidth,slotWidth,flangeZ+chassisZ]); // slot guide
 }
 
 // cable clip that mounts on bosses inside projector
