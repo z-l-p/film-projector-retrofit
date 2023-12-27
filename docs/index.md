@@ -140,11 +140,13 @@ Motor & Belt Installation
 
 1) Prepare 3D-printed motor bracket (STL filename?). There are 3 pockets on the underside that need supports removed. Insert M3 nuts into the hexagonal pockets and secure with a drop of CA glue around the perimiter of each nut. (These will be for the encoder bracket added later.)
 
-2) Use three M3 x 5mm screws to attach aluminum motor mount to 3D-printed bracket. (These should be included when you purchased the mount.) Secure with thread-locker. One will fit into a recessed pocket, as shown in photo. (This is required to clear an existing bolt on the Eiki chassis.) NEED BETTER PHOTO.
+2) Use three M3 x 5mm screws to attach aluminum motor mount to 3D-printed bracket. (These should be included when you purchased the mount.) Secure with thread-locker. One will fit into a recessed pocket, as shown in photo. (This is required to clear an existing bolt on the Eiki chassis.)
 
 3) Screw the motor to aluminum motor mount using 2 M3 x 4mm countersunk screws. (The motor mount may include these screws but check the length.  I needed to file mine down by 1mm.) Secure screws with threadocker. See picture for motor orientation. (NEED PHOTO)
 
 4) Attach 16 tooth pulley to motor shaft using 1/8" to 5mm adapter. You will need to replace 1 pulley set-screw with an M3 x 5mm+ to reach through the 1/8" adapter and grab the motor shaft. Slide the pulley close to the motor mount, so it's about 1mm away. Use thread-locker on the M3 screw. If the pulley seems off-center, try shimming it with small piece of aluminum from a beer / soda can. 
+
+(NEED better photo of motor mounted in projector, with hand sliding it to tension the belt.)
 
 5) Loosely attach motor mount to projector using the 3 original Eiki screws. It should slide freely in the vertical dimension. If it won't slide, check the back of the mount to see if a screw head is striking some hardware on the projector.
 
