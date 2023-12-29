@@ -32,7 +32,7 @@
 // When ESP32 Arduino core v3.x is released there will be breaking changes because LEDC setup will be different!
 #include <AS5X47.h>             // https://github.com/adrien-legrand/AS5X47
 #include <elapsedMillis.h>      // https://github.com/pfeerick/elapsedMillis
-#include "RunningAverage.h"     // https://github.com/RobTillaart/RunningAverage
+#include <Ramp.h>                // https://github.com/siteswapjuggler/RAMP
 #include <ResponsiveAnalogRead.h> // https://github.com/dxinteractive/ResponsiveAnalogRead
 #include <Button2.h>              // https://github.com/LennartHennigs/Button2
 
@@ -40,8 +40,8 @@
 int debugEncoder = 0; // serial messages for encoder count and shutterMap value
 int debugUI = 0; // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0; // serial messages for frame count and FPS
-int debugMotor = 1; // serial messages for motor info
-int debugLed = 0; // serial messages for LED info
+int debugMotor = 0; // serial messages for motor info
+int debugLed = 1; // serial messages for LED info
 
 // Basic setup options (enable the options based on your hardware choices)
 #define enableShutterPots 1 // 0 = use hard-coded shutterBlades and shutterAngle, 1 = use pots
@@ -97,22 +97,30 @@ ResponsiveAnalogRead ledPot(ledPotPin, true, AnalogReadMultiplier);
 #endif
 
 int ledSlewVal;
-int ledSlewMin = 1; // the minumum slew value when knob is turned down (1-200)
+int ledSlewValOld;
+int ledSlewMin = 1; // the minumum slew value when knob is turned down (msec)
+int ledSlewMax = 10000; // the max slew value when knob is turned up (msec)
+
 int motSlewVal;
-int motSlewMin = 10; // the minumum slew value when knob is turned down (1-200)
 int motSlewValOld;
+int motSlewMin = 40; // the minumum slew value when knob is turned down (msec)
+int motSlewMax = 10000; // the max slew value when knob is turned up (msec)
+
 int shutBladesVal;
 int shutBladesValOld;
 float shutAngleVal;
 float shutAngleValOld;
 
-// running average library setup
-RunningAverage motAvg(200); // 200 samples @ 50/sec = 10 sec maximum buffer
-RunningAverage ledAvg(200); // 200 samples @ 50/sec = 10 sec maximum buffer
+// Ramp library setup
+rampInt motAvg; // ramp object for motor speed
+rampInt ledAvg; // ramp object for LED brightness
 
 // UI VARS (could also be updated by remote control in future. Put these in a struct for easier radiolib management?)
 int motPotVal = 0; // current value of Motor pot (not necessarily the current speed since we might be ramping toward this value)
+int motPotFPS = 0; // current requested FPS based on motPotVal and scaling
+int motPotFPSOld = 0;
 int ledPotVal = 0; // current value of LED pot (not necessarily the current LED brightness since we might be fading or strobing)
+int ledPotValOld;
 int shutterBlades = 2; // How many shutter blades: (minimum = 1 so lower values will be constrained to 1)
 float shutterAngle = 0.5; // float shutter angle per blade: 0= LED always off, 1= LED always on, 0.5 = 180d shutter angle
 
@@ -225,9 +233,6 @@ void setup() {
     shutAnglePot.setAnalogResolution(4096);
     shutAnglePot.setActivityThreshold(AnalogReadThresh);
   #endif
-
-  motAvg.clear(); // start the moving average for slewing
-  ledAvg.clear(); // start the moving average for slewing
 
   // Setup Serial Monitor
   Serial.begin(115200);
@@ -553,10 +558,16 @@ void updateLed() {
   }
 
 
-  ledAvg.addValue(ledPotVal); // update the average ledPotVal
-  ledSlewVal = map(ledSlewVal,0,4095,ledSlewMin,200);
-  ledPotVal = int(ledAvg.getAverageLast(ledSlewVal));
-  ledBright = ledPotVal; // set brightness to slewed version of pot value
+  ledSlewVal = map(ledSlewVal,0,4095,ledSlewMin,ledSlewMax); // turn slew val pot into ms ramp time
+  ledAvg.update(); // LED slewing managed by Ramp library
+  // if knobs have changed sufficiently, calculate new slewing ramp time
+  if (abs(ledSlewVal-ledSlewValOld) >=10 || abs(ledPotVal-ledPotValOld) >=10) {
+      ledAvg.go(ledPotVal, ledSlewVal);  // set next ramp interpolation in ms
+      ledSlewValOld = ledSlewVal;
+      ledPotValOld = ledPotVal;
+    }
+
+  ledBright = ledAvg.getValue(); // set brightness to slewed version of pot value
   interrupts();
 
    if (debugLed) {
@@ -580,8 +591,8 @@ void updateLed() {
 void updateMotor() {
     
     // Depending on the motor direction switch, we translate the pot ADC to FPS with optional negative scaling
-    // (The slewing averager only deals with ints, so our FPS is multiplied by 100 to make it int 2400)
-    int motPotFPS;
+    // (The Ramp library is currently set up for ints, so our float FPS is multiplied by 100 to make it int 2400)
+    
     if (enableMotSwitch) {
       // Motor UI is switch + pot, so use normal pot scaling
       if (!digitalRead(motDirFwdSwitch)) {
@@ -596,11 +607,17 @@ void updateMotor() {
        motPotFPS = mapf(motPotVal,0,4095,-2400,2400); // convert mot pot value to FPS x 100
     if (motPotFPS > -20 && motPotFPS < 20) motPotFPS = 0; // add "deadband" in middle to make it easier to find the "stop" position
     }
-    //int motSlewMin = 20; // the minumum slew value (1-200) REPLACED WITH GLOBAL VARIABLE
-    motAvg.addValue(motPotFPS); // update the average motPotFPS
-    motSlewVal = map(motSlewVal,0,4095,motSlewMin,200);
 
-    FPStarget = int(motAvg.getAverageLast(motSlewVal))/100.0; // use slewed value for target FPS (dividing by 100 to get floating point FPS)
+    motSlewVal = map(motSlewVal,0,4095,motSlewMin,motSlewMax); // turn slew val pot into ms ramp time
+    motAvg.update(); // Motor slewing managed by Ramp library
+    // if knobs have changed sufficiently, calculate new slewing ramp time
+    if (abs(motSlewVal-motSlewValOld) >=10 || abs(motPotFPS-motPotFPSOld) >=10) {
+        motAvg.go(motPotFPS, motSlewVal);  // set next ramp interpolation in ms
+        motSlewValOld = motSlewVal;
+        motPotFPSOld = motPotFPS;
+      }
+    
+    FPStarget = motAvg.getValue()/100.0; // use slewed value for target FPS (dividing by 100 to get floating point FPS)
     // These values may be negative, but fscale only handles positive values, so...
     float FPStargetScaled;
     if (FPStarget < 0.0) {
