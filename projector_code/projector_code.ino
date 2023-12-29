@@ -14,6 +14,7 @@
 // startup with lamp disabled!!!! Otherwise film will burn! (Actually, at startup we should advance projector to blanking point at each startup so shutter is closed)
 // add forward/backward buttons to code (currently connected but unused)
 // February 2023 Eiki UI will have settings for "safe" mode where lamp brightness is linked to speed and shutter angle to prevent film burns. This will change UI input logic.
+// Modular UI: Make shutter blinking optional, in case somebody wants to leave mechanical shutter and not install encoder at all.
 // Test each part of modular UI
 // finish adding single frame button actions in callback function
 // Figure out ESC on/off button hack, then add ESP output pin to turn ESC on after boot
@@ -31,7 +32,7 @@
 // When ESP32 Arduino core v3.x is released there will be breaking changes because LEDC setup will be different!
 #include <AS5X47.h>             // https://github.com/adrien-legrand/AS5X47
 #include <elapsedMillis.h>      // https://github.com/pfeerick/elapsedMillis
-#include <movingAvg.h>          // https://github.com/JChristensen/movingAvg
+#include "RunningAverage.h"     // https://github.com/RobTillaart/RunningAverage
 #include <ResponsiveAnalogRead.h> // https://github.com/dxinteractive/ResponsiveAnalogRead
 #include <Button2.h>              // https://github.com/LennartHennigs/Button2
 
@@ -105,9 +106,9 @@ int shutBladesValOld;
 float shutAngleVal;
 float shutAngleValOld;
 
-// moving average library setup
-movingAvg motAvg(200); // 200 samples @ 50/sec = 10 sec maximum buffer
-movingAvg ledAvg(200); // 200 samples @ 50/sec = 10 sec maximum buffer
+// running average library setup
+RunningAverage motAvg(200); // 200 samples @ 50/sec = 10 sec maximum buffer
+RunningAverage ledAvg(200); // 200 samples @ 50/sec = 10 sec maximum buffer
 
 // UI VARS (could also be updated by remote control in future. Put these in a struct for easier radiolib management?)
 int motPotVal = 0; // current value of Motor pot (not necessarily the current speed since we might be ramping toward this value)
@@ -225,8 +226,8 @@ void setup() {
     shutAnglePot.setActivityThreshold(AnalogReadThresh);
   #endif
 
-  motAvg.begin(); // start the moving average for slewing
-  ledAvg.begin(); // start the moving average for slewing
+  motAvg.clear(); // start the moving average for slewing
+  ledAvg.clear(); // start the moving average for slewing
 
   // Setup Serial Monitor
   Serial.begin(115200);
@@ -552,9 +553,9 @@ void updateLed() {
   }
 
 
-  ledAvg.reading(ledPotVal); // update the average ledPotVal
+  ledAvg.addValue(ledPotVal); // update the average ledPotVal
   ledSlewVal = map(ledSlewVal,0,4095,ledSlewMin,200);
-  ledPotVal = ledAvg.getAvg(ledSlewVal);
+  ledPotVal = ledAvg.getAverage(ledSlewVal);
   ledBright = ledPotVal; // set brightness to slewed version of pot value
   interrupts();
 
@@ -596,16 +597,10 @@ void updateMotor() {
     if (motPotFPS > -20 && motPotFPS < 20) motPotFPS = 0; // add "deadband" in middle to make it easier to find the "stop" position
     }
     //int motSlewMin = 20; // the minumum slew value (1-200) REPLACED WITH GLOBAL VARIABLE
-    motAvg.reading(motPotFPS); // update the average motPotFPS
-    int motSlewValScaled = map(motSlewVal,0,4095,motSlewMin,200);
+    motAvg.addValue(motPotFPS); // update the average motPotFPS
+    motSlewVal = map(motSlewVal,0,4095,motSlewMin,200);
 
-    // CURRRENTLY BROKEN - FIX IT LATER
-    // if (motSlewVal <= motSlewMin && motSlewValOld != motSlewVal) {
-    //   motAvg.reset();    // if slewing knob is reduced, reset the slewing buffer so when we turn it back up we won't include the previous history in the buffer
-    //   Serial.println("MotSlewVal RESET");
-    // }
-    // motSlewValOld = motSlewVal;
-    FPStarget = motAvg.getAvg(motSlewValScaled)/100.0; // use slewed value for target FPS (dividing by 100 to get floating point FPS)
+    FPStarget = motAvg.getAverage(motSlewVal)/100.0; // use slewed value for target FPS (dividing by 100 to get floating point FPS)
     // These values may be negative, but fscale only handles positive values, so...
     float FPStargetScaled;
     if (FPStarget < 0.0) {
