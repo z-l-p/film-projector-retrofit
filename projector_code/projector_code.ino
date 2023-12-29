@@ -555,7 +555,7 @@ void updateLed() {
 
   ledAvg.addValue(ledPotVal); // update the average ledPotVal
   ledSlewVal = map(ledSlewVal,0,4095,ledSlewMin,200);
-  ledPotVal = ledAvg.getAverage(ledSlewVal);
+  ledPotVal = int(ledAvg.getAverageLast(ledSlewVal));
   ledBright = ledPotVal; // set brightness to slewed version of pot value
   interrupts();
 
@@ -600,7 +600,7 @@ void updateMotor() {
     motAvg.addValue(motPotFPS); // update the average motPotFPS
     motSlewVal = map(motSlewVal,0,4095,motSlewMin,200);
 
-    FPStarget = motAvg.getAverage(motSlewVal)/100.0; // use slewed value for target FPS (dividing by 100 to get floating point FPS)
+    FPStarget = int(motAvg.getAverageLast(motSlewVal))/100.0; // use slewed value for target FPS (dividing by 100 to get floating point FPS)
     // These values may be negative, but fscale only handles positive values, so...
     float FPStargetScaled;
     if (FPStarget < 0.0) {
@@ -615,7 +615,7 @@ void updateMotor() {
     ledcWrite(motPWMChannel, motDuty); // update motor speed
     if (debugMotor) {
       Serial.print("Mot Slew: ");
-      Serial.print(motSlewValScaled);
+      Serial.print(motSlewVal);
       Serial.print(", FPS Target: ");
       Serial.print(FPStarget);
       Serial.print(", Mot uS: ");
