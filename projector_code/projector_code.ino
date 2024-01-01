@@ -2,7 +2,7 @@
 // SPECTRAL Wandering Sounds + Images Seminar
 // ------------------------------------------
 // Projector control software for ESP32 micro-controller
-// On HiLetGo 38pin ESP32 board, solder 10uF cap between EN and GND to enable auto loading (otherwise you need to press GPIO 0 [right] button each time you download the code)
+// On some 38pin ESP32 boards you need to press GPIO 0 [right] button each time you upload code. If so, solder 10uF cap between EN and GND to enable auto reset.
 // Controlling Hobbywing "Quickrun Fusion SE" motor/ESC combo using ESP32 LEDC peripheral (using 16bit timer for extra resolution)
 // Note: Hobbywing motor/esc needs to be programmed via "programming card" to disable braking, otherwise it will try to hold position when speed = 0
 // "Digital shutter" is accomplished via AS5047 magnetic rotary encoder, setup via SPI registers and monitored via ABI quadrature pulses
@@ -11,15 +11,10 @@
 
 
 // TODO Urgent: 
-// startup with lamp disabled!!!! Otherwise film will burn! (Actually, at startup we should advance projector to blanking point at each startup so shutter is closed)
-// add forward/backward buttons to code (currently connected but unused)
+// every time targetFPS = 0 and shutter is open, we should advance projector to blanking point so shutter is "closed"
+// add single-frame capability to button callback functions
 // February 2023 Eiki UI will have settings for "safe" mode where lamp brightness is linked to speed and shutter angle to prevent film burns. This will change UI input logic.
-// Modular UI: Make shutter blinking optional, in case somebody wants to leave mechanical shutter and not install encoder at all.
-// Test each part of modular UI
-// finish adding single frame button actions in callback function
-// Figure out ESC on/off button hack, then add ESP output pin to turn ESC on after boot
-// (also if ESC loses its settings then we might need to set throttle config, etc on startup too!)  
-// when slew rate is reduced, the slew buffer should be truncated so previous history doesn't influence future values when slew is turned back up (tried to fix in line 468 but failed. I should replace averaging library with my own function so I have direct access to buffer array.)
+// Test each part of modular UI 
 // add RGB LED feedback for battery charge, etc (or just buy batt meter board?)
 
 // TODO Nice but not essential:
@@ -41,13 +36,14 @@ int debugEncoder = 0; // serial messages for encoder count and shutterMap value
 int debugUI = 0; // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0; // serial messages for frame count and FPS
 int debugMotor = 0; // serial messages for motor info
-int debugLed = 1; // serial messages for LED info
+int debugLed = 0; // serial messages for LED info
 
 // Basic setup options (enable the options based on your hardware choices)
-#define enableShutterPots 1 // 0 = use hard-coded shutterBlades and shutterAngle, 1 = use pots
-#define enableSlewPots 1 // 0 = use hard-coded ledSlewMin and motSlewMin, 1 = use pots
+#define enableShutter 1 // 0 = LED stays on all the time (in case physical shutter is installed), 1 = use encoder to blink LED for digital shutter
+#define enableShutterPots 1 // 0 = use hard-coded shutterBlades and shutterAngle variables, 1 = use pots to control these functions
+#define enableSlewPots 1 // 0 = use hard-coded ledSlewMin and motSlewMin variables, 1 = use pots to control these functions
 #define enableMotSwitch 1 // 0 = single pot for motor direction/speed (center = STOP), 1 = use switch for FWD-STOP-BACK & pot for speed
-#define enableSafeSwitch 1 // 0 = use hard-coded safeMode to limit LED brightness, 1 = use switch to enable/disable safe mode
+#define enableSafeSwitch 1 // 0 = use hard-coded safeMode variable to limit LED brightness, 1 = use switch to enable/disable safe mode
 #define enableSingleButtons 1 // 1 = use buttons for single frame FORWARD / BACK
 
 // INPUT PINS //
@@ -78,7 +74,7 @@ int debugLed = 1; // serial messages for LED info
 
 // ResponsiveAnalogRead Library Setup https://github.com/dxinteractive/ResponsiveAnalogRead#analog-resolution
 int AnalogReadThresh = 60; // "Activity Threshold" for ResponsiveAnalogRead library (higher = less noise but may ignore small changes)
-float AnalogReadMultiplier = 0.1; // "Snap Multiplier" for ResponsiveAnalogRead library (lower = smoother)
+float AnalogReadMultiplier = 0.001; // "Snap Multiplier" for ResponsiveAnalogRead library (lower = smoother)
 ResponsiveAnalogRead motPot(motPotPin, true, AnalogReadMultiplier);
 ResponsiveAnalogRead ledPot(ledPotPin, true, AnalogReadMultiplier);
 #if (enableSlewPots) 
@@ -98,16 +94,18 @@ ResponsiveAnalogRead ledPot(ledPotPin, true, AnalogReadMultiplier);
 
 int ledSlewVal;
 int ledSlewValOld;
-int ledSlewMin = 1; // the minumum slew value when knob is turned down (msec)
-int ledSlewMax = 10000; // the max slew value when knob is turned up (msec)
+int ledSlewMin = 1; // the minumum slew value when knob is turned down (msec).
+int ledSlewMax = 10000; // the max slew value when knob is turned up (msec).
 
 int motSlewVal;
 int motSlewValOld;
-int motSlewMin = 40; // the minumum slew value when knob is turned down (msec)
-int motSlewMax = 10000; // the max slew value when knob is turned up (msec)
+int motSlewMin = 10; // the minumum slew value when knob is turned down (msec). (> 0 will help keep the motor and belt safe.)
+int motSlewMax = 10000; // the max slew value when knob is turned up (msec).
 
+int shutBladesPotVal;
 int shutBladesVal;
 int shutBladesValOld;
+int shutAnglePotVal;
 float shutAngleVal;
 float shutAngleValOld;
 
@@ -143,7 +141,7 @@ int motMinUS = 1816;  // motor pulse length at -24fps (set this by testing)
 int motMaxUS = 1163;  // motor pulse length at +24fps (set this by testing)
 
 
-// Rotary Encoder & Digital Shutter Vriables
+// Rotary Encoder & Digital Shutter Variables
 void IRAM_ATTR pinChangeISR(); // prototype for ISR function that will be defined in later code (prototype must be declared _before_ we attach interrupt because ESP32 requires "IRAM_ATTR" flag which breaks typical Arduino behavior)
 // Start connection to the sensor.
 AS5X47 as5047(EncCSN);
@@ -189,10 +187,6 @@ elapsedMillis timerUI; // MS since last time we checked/updated the user interfa
 /////////////////////////
 
 void setup() {
-
-  pinMode(EncA, INPUT);
-  pinMode(EncB, INPUT);
-  pinMode(EncI, INPUT);
   if (!LedDimMode) pinMode(ledPin, OUTPUT); // only used for current-controlled dimming. Otherwise LEDC setup will take care of this
   if (enableMotSwitch) {
     pinMode(motDirFwdSwitch, INPUT_PULLUP);
@@ -211,8 +205,14 @@ void setup() {
   if (enableSafeSwitch) {
     pinMode(safeSwitch, INPUT_PULLUP);
   }
-  attachInterrupt(EncA, pinChangeISR, CHANGE);
-  attachInterrupt(EncB, pinChangeISR, CHANGE);
+  if (enableShutter) {
+    pinMode(EncA, INPUT);
+    pinMode(EncB, INPUT);
+    pinMode(EncI, INPUT);
+    attachInterrupt(EncA, pinChangeISR, CHANGE);
+    attachInterrupt(EncB, pinChangeISR, CHANGE);
+  }
+
   abOld = count = countOld = 0;
 
   motPot.setAnalogResolution(4096);
@@ -241,7 +241,7 @@ void setup() {
   Serial.println("SPECTRAL Projector Controller");
   Serial.println("-----------------------------");
   
-  // reset ESC settings if user holds down both buttons during startup
+  // Program the ESC settings if user holds down both buttons during startup
   if (digitalRead(buttonApin) == 0 && digitalRead(buttonBpin) == 0) {
     ESCprogram();
     while(1); // don't continue setup since the ESC needs to be rebooted before we can continue
@@ -397,8 +397,8 @@ void send_LEDC() {
   bool shutterState = shutterMap[count]; // copy shutter state to local variable in case it changes during the ISR execution
 
     if (LedDimMode) { // PWM mode
-        if (shutterState) {
-          // LED ON for this step of shutter
+        if (shutterState == 1 || enableShutter == 0) {
+          // LED ON for this step of shutter OR shutter is disabled and LED is always on
           ledcSetup(ledChannel, ledBrightFreq, ledBrightRes);   // configure LED PWM function using LEDC channel
           ledcAttachPin(ledPin, ledChannel); // attach the LEDC channel to the GPIO to be controlled
           if (LedInvert) {
@@ -406,7 +406,7 @@ void send_LEDC() {
           } else {
             ledcWrite(ledChannel, ledBright); // set lamp to desired brightness
           }
-        } else {
+        } else if (shutterState == 0 && enableShutter == 1) {
           // LED OFF for this segment of shutter
           ledcDetachPin(ledPin); // detach the LEDC channel to the GPIO to be controlled
           if (LedInvert) {
@@ -418,9 +418,17 @@ void send_LEDC() {
         }
       } else { // current controlled mode so we're just toggling the LED pin here and adjusting brightness in some other way
         if (LedInvert) {
-          digitalWrite(ledPin, !(shutterState));
+          if (enableShutter) {
+            digitalWrite(ledPin, !(shutterState)); // active low, using shutter
+          } else {
+            digitalWrite(ledPin, 0); // active low, no shutter
+          }
         } else {
-          digitalWrite(ledPin, shutterState);
+          if (enableShutter) {
+            digitalWrite(ledPin, shutterState); // active high, using shutter
+          } else {
+            digitalWrite(ledPin, 1); // active high, no shutter
+          }
         }
       }
 }
@@ -498,13 +506,21 @@ void readPots() {
     motSlewVal = motSlewPot.getValue();
   #endif
 
-  #if (enableShutterPots) 
+  #if (enableShutterPots && enableShutter) 
     shutBladesPot.update();
     shutAnglePot.update();
-    int shutBladesVal1 = shutBladesPot.getValue();
-    int shutAngleVal1 = shutAnglePot.getValue();
-    shutBladesVal = map(shutBladesVal1, 0, 4095, 1, 3); // map ADC input to range of number of shutter blades
-    shutAngleVal = mapf(shutAngleVal1, 0, 4095, 0.1, 1.0); // map ADC input to range of shutter angle
+    shutBladesPotVal = shutBladesPot.getValue();
+    shutAnglePotVal = shutAnglePot.getValue();
+    // using custom scaling for shutBladesPotVal to make control feel right
+    if (shutBladesPotVal < 800) {
+      shutBladesVal = 1;
+    } else if (shutBladesPotVal < 2500) {
+      shutBladesVal = 2;
+    } else {
+      shutBladesVal = 3;
+    }
+
+    shutAngleVal = mapf(shutAnglePotVal, 0, 4095, 0.1, 1.0); // map ADC input to range of shutter angle
   #endif
 
   #if (enableSafeSwitch)
@@ -537,9 +553,9 @@ void readPots() {
     #endif
     #if (enableShutterPots) 
       Serial.print(", Shut Blade Pot: ");
-      Serial.print(shutBladesVal1);
+      Serial.print(shutBladesPotVal);
       Serial.print(", Shut Angle Pot: ");
-      Serial.print(shutAngleVal1);
+      Serial.print(shutAnglePotVal);
     #endif
     #if (enableSafeSwitch)
       Serial.print(", Safe Switch: ");
@@ -549,12 +565,14 @@ void readPots() {
   }
 }
 
-// compute LED brightness (note that the ISR ultimately controls the LED state since it acts as the digital shutter)
+// compute LED brightness (note that the ISR ultimately controls the LED state if enableShutter = 1)
 void updateLed() {
   noInterrupts();
   
   if (shutBladesVal != shutBladesValOld || shutAngleVal != shutAngleValOld) {
-    updateShutterMap(shutBladesVal, shutAngleVal);
+    if (enableShutter) {
+      updateShutterMap(shutBladesVal, shutAngleVal);
+    }
   }
 
 
@@ -582,8 +600,8 @@ void updateLed() {
     Serial.print(", Shutter Angle: ");
     Serial.println(shutAngleVal);
    }
-   // at slow speeds OR if the shutter is fully open, update the LED PWM directly because ISR isn't firing unless in motion
-   if (framePeriod > 500000 || shutAngleVal == 1.0) {
+   // at slow speeds OR if the shutter is fully open OR shutter disabled, update the LED PWM directly because ISR isn't firing unless in motion
+   if (framePeriod > 500000 || shutAngleVal == 1.0 || !enableShutter) {
     send_LEDC();
    }
 }
