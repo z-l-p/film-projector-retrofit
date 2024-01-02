@@ -251,3 +251,9 @@ LED Module Assembly
 
 LED Module Mounting
 ================
+
+ESP32 Wiring
+================
+
+ESP32 Mounting
+================
