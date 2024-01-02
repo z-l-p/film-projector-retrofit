@@ -34,9 +34,9 @@
 
 // Debug Levels (Warning: excessive debug messages might cause loss of shutter sync. Turn off if not needed.)
 int debugEncoder = 0; // serial messages for encoder count and shutterMap value
-int debugUI = 1; // serial messages for user interface inputs (pots, buttons, switches)
+int debugUI = 0; // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0; // serial messages for frame count and FPS
-int debugMotor = 0; // serial messages for motor info
+int debugMotor = 1; // serial messages for motor info
 int debugLed = 0; // serial messages for LED info
 
 // Basic setup options (enable the options based on your hardware choices)
@@ -155,8 +155,8 @@ const int motPWMRes = 16; // bits of resolution for extra control (standard serv
 const int motPWMFreq = 50; // PWM frequency (50Hz is standard for RC servo / ESC)
 int motPWMPeriod = 1000000/motPWMFreq; // microseconds per pulse
 const int motPWMChannel = 2; // ESP32 LEDC channel number. Pairs share settings (0/1, 2/3, 4/5...) so skip one to insure your settings work!
-int motMinUS = 1816;  // motor pulse length at -24fps (set this by testing)
-int motMaxUS = 1163;  // motor pulse length at +24fps (set this by testing)
+int motMinUS = 1788;  // motor pulse length at -24fps (set this by testing)
+int motMaxUS = 1220;  // motor pulse length at +24fps (set this by testing)
 
 
 // Rotary Encoder & Digital Shutter Variables
@@ -679,6 +679,8 @@ void updateMotor() {
       Serial.print(motSlewVal);
       Serial.print(", FPS Target: ");
       Serial.print(FPStarget);
+      Serial.print(", FPS Real: ");
+      Serial.print(FPSreal);
       Serial.print(", Mot uS: ");
       Serial.print(motSpeedUS);
       Serial.print(", Mot PWM Duty: ");
