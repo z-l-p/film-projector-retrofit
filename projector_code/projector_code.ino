@@ -30,10 +30,11 @@
 #include <Ramp.h>                // https://github.com/siteswapjuggler/RAMP
 #include <ResponsiveAnalogRead.h> // https://github.com/dxinteractive/ResponsiveAnalogRead
 #include <Button2.h>              // https://github.com/LennartHennigs/Button2
+#include <Adafruit_NeoPixel.h>  // https://github.com/adafruit/Adafruit_NeoPixel
 
 // Debug Levels (Warning: excessive debug messages might cause loss of shutter sync. Turn off if not needed.)
 int debugEncoder = 0; // serial messages for encoder count and shutterMap value
-int debugUI = 0; // serial messages for user interface inputs (pots, buttons, switches)
+int debugUI = 1; // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0; // serial messages for frame count and FPS
 int debugMotor = 0; // serial messages for motor info
 int debugLed = 0; // serial messages for LED info
@@ -45,6 +46,7 @@ int debugLed = 0; // serial messages for LED info
 #define enableMotSwitch 1 // 0 = single pot for motor direction/speed (center = STOP), 1 = use switch for FWD-STOP-BACK & pot for speed
 #define enableSafeSwitch 1 // 0 = use hard-coded safeMode variable to limit LED brightness, 1 = use switch to enable/disable safe mode
 #define enableSingleButtons 1 // 1 = use buttons for single frame FORWARD / BACK
+#define enableStatusLed 1 // 1 = use NeoPixel status LED(s) for user feedback
 
 // INPUT PINS //
   // UI
@@ -71,9 +73,10 @@ int debugLed = 0; // serial messages for LED info
 #define escPin 22 // PWM output for ESC
 #define escProgramPin 21 // serial output to program ESC (needs 10k resistor to 3.3v)
 #define ledPin 2  // PWM output for LED (On 38pin HiLetGo ESP32 board, GPIO 2 is the built-in LED)
+#define NeoPixelPin 15 // output pin for NeoPixel status LED(s)
 
 // ResponsiveAnalogRead Library Setup https://github.com/dxinteractive/ResponsiveAnalogRead#analog-resolution
-int AnalogReadThresh = 60; // "Activity Threshold" for ResponsiveAnalogRead library (higher = less noise but may ignore small changes)
+int AnalogReadThresh = 50; // "Activity Threshold" for ResponsiveAnalogRead library (higher = less noise but may ignore small changes)
 float AnalogReadMultiplier = 0.001; // "Snap Multiplier" for ResponsiveAnalogRead library (lower = smoother)
 ResponsiveAnalogRead motPot(motPotPin, true, AnalogReadMultiplier);
 ResponsiveAnalogRead ledPot(ledPotPin, true, AnalogReadMultiplier);
@@ -94,12 +97,12 @@ ResponsiveAnalogRead ledPot(ledPotPin, true, AnalogReadMultiplier);
 
 int ledSlewVal;
 int ledSlewValOld;
-int ledSlewMin = 1; // the minumum slew value when knob is turned down (msec).
+int ledSlewMin = 0; // the minumum slew value when knob is turned down (msec).
 int ledSlewMax = 10000; // the max slew value when knob is turned up (msec).
 
 int motSlewVal;
 int motSlewValOld;
-int motSlewMin = 10; // the minumum slew value when knob is turned down (msec). (> 0 will help keep the motor and belt safe.)
+int motSlewMin = 5; // the minumum slew value when knob is turned down (msec). (> 0 will help keep the motor and belt safe from extreme acceleration change.)
 int motSlewMax = 10000; // the max slew value when knob is turned up (msec).
 
 int shutBladesPotVal;
@@ -109,9 +112,24 @@ int shutAnglePotVal;
 float shutAngleVal;
 float shutAngleValOld;
 
+
 // Ramp library setup
 rampInt motAvg; // ramp object for motor speed
 rampInt ledAvg; // ramp object for LED brightness
+
+
+#if (enableStatusLed)
+  // NeoPixel library setup
+  #define NUMPIXELS 1 // How many NeoPixels are attached?
+
+  Adafruit_NeoPixel pixels(NUMPIXELS, NeoPixelPin, NEO_RGB + NEO_KHZ800); 
+  // last argument should match your LED type. Add together as needed:
+  //   NEO_KHZ800  800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
+  //   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
+  //   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
+  //   NEO_RGB     Pixels are wired for RGB bitstream (5mm LEDS, v1 FLORA pixels, not v2)
+  //   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
+#endif
 
 // UI VARS (could also be updated by remote control in future. Put these in a struct for easier radiolib management?)
 int motPotVal = 0; // current value of Motor pot (not necessarily the current speed since we might be ramping toward this value)
@@ -234,6 +252,10 @@ void setup() {
     shutAnglePot.setActivityThreshold(AnalogReadThresh);
   #endif
 
+  #if (enableStatusLed)
+    pixels.begin(); // INITIALIZE NeoPixel object
+  #endif
+
   // Setup Serial Monitor
   Serial.begin(115200);
   delay(100);
@@ -246,6 +268,10 @@ void setup() {
     ESCprogram();
     while(1); // don't continue setup since the ESC needs to be rebooted before we can continue
   }
+
+  #if (enableStatusLed)
+    updateStatusLED(0, 0,32,0); // green LED
+  #endif
 
   // Set rotation direction (see AS5047 datasheet page 17)
   Settings1 settings1;
@@ -689,6 +715,10 @@ void ESCprogram() {
   // After programmer sends settings, ESC responds with ACK and pauses indefinitely
   // Then ESC power must be toggled to reboot with new settings. (There is no way for programmer to send a "reboot" command)
 
+  #if (enableStatusLed)
+    updateStatusLED(0, 32,0,0); // red LED
+  #endif
+
   Serial.println("Waiting for HobbyWing ESC ...");
 
   // wait for beginning of init message from ESC
@@ -699,19 +729,30 @@ void ESCprogram() {
   while (digitalRead(escProgramPin) == 1);
   while (digitalRead(escProgramPin) == 0);
   while (digitalRead(escProgramPin) == 1);
+  #if (enableStatusLed)
+    updateStatusLED(0, 20,5,0); // orange LED
+  #endif
   Serial.println("ESC booted");
   delay(1300); // wait for ESC init message to pass before sending ACK (we don't parse it, just waiting for it to pass)
 
+  #if (enableStatusLed)
+    updateStatusLED(0, 32,0,0); // red LED
+  #endif
   Serial.println("Sending ACK...");
   ESC_send_ACK(); // tell ESC that we're here
   delay(100); // wait before sending settings
 
+  #if (enableStatusLed)
+    updateStatusLED(0, 20,5,0); // orange LED
+  #endif
   Serial.println("Sending Settings...");
   for (byte i = 0; i < sizeof(ESC_settings); i++) {
     ESC_ser_write(ESC_settings[i]);
   }
   ESC_send_ACK(); // tell ESC that we're done
-
+  #if (enableStatusLed)
+    updateStatusLED(0, 0,32,0); // green LED
+  #endif
   Serial.println("DONE");
 
 }
@@ -768,6 +809,12 @@ void ESC_send_ACK()
     }
      pinMode(escProgramPin, INPUT_PULLUP); // float pin
     
+}
+
+void updateStatusLED(int x, int R, int G, int B) {
+  // pixels.Color() takes RGB values, from 0,0,0 up to 255,255,255
+    pixels.setPixelColor(x, pixels.Color(R, G, B));
+    pixels.show();   // Send the updated pixel colors to the hardware.
 }
 
 // map function like Arduino core, but for floats
