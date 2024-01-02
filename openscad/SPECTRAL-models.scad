@@ -19,11 +19,11 @@ heatsinkZ = 20; // size of LED heatsink
 // ------------- //
 
 //eiki_motormount(); // Mount to attach motor and rotary encoder - PRINT WITH SUPPORTS
-//eiki_encoder_magnet_mount(); // 2-piece threaded part to attach encoder magnet to drive shaft - PRINT WITH 0.1mm LAYERS 
+eiki_encoder_magnet_mount(); // 2-piece threaded part to attach encoder magnet to drive shaft - PRINT WITH 0.1mm LAYERS 
 //eiki_camtank_cover(); // Cover for hole in camtank after shutter removal - PRINT ROTATED, FLAT SIDE DOWN
 //eiki_LED_mount();
 //eiki_LED_lens_holder(1); // export STL with 0 argument for holder, 1 argument for holder fingers
-eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
+//eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
 //eiki_power_switch_ring(); // adapter ring to mount power switch in hole for threading lamp
 //eiki_terminal_block_mount(); // mount to hold electrical terminal blocks
 //eiki_cable_clip(); // cable clip that mounts on bosses inside projector
@@ -552,8 +552,8 @@ module eiki_encoder_magnet_mount() {
      //collar to screw onto shaft
     difference(){
         union() {
-            cylinder(d=slugD+4, h=slugZ-3, $fn=48); //outer collar base
-            translate([0,0,slugZ-3]) cylinder(d1=slugD+4, d2=slugD+1, h=3, $fn=48); //outer collar bevel
+            cylinder(d=slugD+6, h=slugZ-3, $fn=8); //outer collar base
+            translate([0,0,slugZ-3]) cylinder(d1=slugD+6, d2=slugD+3, h=3, $fn=8); //outer collar bevel
         }
         
         translate([0,0,1]) metric_thread (slugD+.2, 1.4, slugZ-1, internal=true, leadin=1); // internal threads (arg: dia, pitch, length)
