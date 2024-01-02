@@ -18,7 +18,8 @@ Theory of Operation and how the parts interact to make it all work
 Preparation
 ===========
 
-1. Purchase parts from the BOM (insert link to BOM)
+1. Purchase parts from the Bill of Materials ("BOM"): 
+	- [Google Sheets link, to be replaced by static CSV file](https://docs.google.com/spreadsheets/d/1z_asHddtIuv7a7RkZ9WCBqF81oMiJ9spwqh7lCQfW5E)
 
 1. Test projector with film before disassembly. It's important to find any problems before you start hacking!
 
@@ -101,7 +102,9 @@ The modified projector controls replace the original knobs on the side of the ch
 
 Steps:
 
-1. The 3D-printed UI control panel ("eiki\_control\_panel.stl") fits on the outside of the projector chassis. Use it as a template to mark the drill holes in the chassis for each control. (Some existing chassis holes will be re-used, and others will be covered by the panel.) If your pots have anti-rotation pins, drll the appropriate holes for them in the chassis. 
+1. The 3D-printed UI control panel ("eiki\_control\_panel.stl") fits on the outside of the projector chassis. If your pots and switches are different than mine, customize the "eiki\_control\_panel()" module in the OpenSCAD file, render, and export a new STL to fit your needs before printing. 
+
+1. Use the printed part as a template to mark the drill holes in the projector chassis for each control. (Some existing chassis holes will be re-used, and others will be covered by the panel.) If your pots have anti-rotation pins, drll the appropriate holes for them in the chassis. 
 
 1. Use the control panel to temporarily hold the controls while you solder your wiring. Each pot will share a ground and 3.3v connection, so there will be short jumpers from pot to pot. Use approx 55cm of 10-conductor ribbon cable (+ 1 more wire for the NeoPixel LED) and use a wire-tie to secure the cables and relieve stress.
 
