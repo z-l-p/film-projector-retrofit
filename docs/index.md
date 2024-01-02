@@ -78,15 +78,35 @@ User Interface
 ==========================
 _(Do this first because it requires a lot of drilling into the projector chassis.)_
 
-The projector controls are the (rewired) original Eiki selector switch, 2 push-buttons, 6 potentiometers, and 5mm NeoPixel RGB status LED. Pots must be 17mm diameter or smaller. The pot's threaded collar must be at least 6mm deep. 8mm would be ideal. Some controls are optional. They can be disabled in the ESP32 code and the OpenSCAD file that generates the 3D-printed control panel. (INSERT IMAGE OF FINISHED CONTROLS)
+The modified projector controls replace the original knobs on the side of the chassis. You can choose to include basic or advanced controls to suit your needs. (Controls can be disabled in the ESP32 code and the OpenSCAD file that generates the 3D-printed control panel.) These are the controls:
 
-1. The 3D-printed UI control panel ("eiki_control_panel.stl") fits on the outside of the projector chassis. Use it as a template to mark the drill holes in the chassis for each control. (Some existing chassis holes will be re-used, and others will be covered by the panel.) If your pots have anti-rotation pins, drll the appropriate holes for them in the chassis (SHOW IMAGE). 
+(INSERT LABELED IMAGE OF FINISHED CONTROLS)
 
-1. Use the control panel to temporarily hold the controls while you solder your wiring. Each pot will share a ground and 3.3v connection, so there will be short jumpers from pot to pot. Use approx 55cm of 10-conductor ribbon cable (+ 1 more wire for the NeoPixel LED) and use a wire-tie to secure the cables.
+- The original Eiki selector switch (rewired for our use)
 
-1. If you will use the NeoPixel Status LED, wire it according to the photo and bend the legs to attach it to the motor speed pot, so it can fit into the nearby hole. You will also need a .1uF cap (marked "104") between 3.3v and GND near the LED. (This stabilizes the voltage and prevents communication errors.) 
+- 2 push-buttons for single-frame advance
 
-_Note: Later you will add a .01uF ("103") capacitor between ground and the wiper of each pot. This is essential to prevent noise on the ESP32 ADCs (which will be seen as moter speed fluctuations and lamp flicker). To be effective, these components must be soldered to the ESP32 end of the wiring (not the pot end)._
+- 6 potentiometers (Pots must be 17mm diameter or smaller. The pot's threaded collar must be at least 6mm deep. 8mm deep would be ideal.)
+	- Motor Speed
+	- Motor Speed Ramp Time ("slewing")
+	- Lamp Brightness
+	- Lamp Brightness Ramp Time ("slewing")
+	- Number of virtual shutter blades (1-3)
+	- Shutter Angle (up to 360d)
+
+- 5mm NeoPixel RGB status LED
+
+- Optional volume pot for optical audio pickup
+
+Steps:
+
+1. The 3D-printed UI control panel ("eiki\_control\_panel.stl") fits on the outside of the projector chassis. Use it as a template to mark the drill holes in the chassis for each control. (Some existing chassis holes will be re-used, and others will be covered by the panel.) If your pots have anti-rotation pins, drll the appropriate holes for them in the chassis. 
+
+1. Use the control panel to temporarily hold the controls while you solder your wiring. Each pot will share a ground and 3.3v connection, so there will be short jumpers from pot to pot. Use approx 55cm of 10-conductor ribbon cable (+ 1 more wire for the NeoPixel LED) and use a wire-tie to secure the cables and relieve stress.
+
+1. If you will use the NeoPixel Status LED, wire it according to the photo and bend the legs to attach it to the motor speed pot, so it can fit into the nearby hole. You will also need a .1uF cap (marked "104") between 3.3v and GND near the LED. (This stabilizes the voltage and prevents communication errors.)  
+
+	_Note: Later you will add a .01uF ("103") capacitor between ground and the wiper of each pot. This is essential to prevent noise on the ESP32 ADCs (which will be seen as moter speed fluctuations and lamp flicker). To be effective, these components must be soldered to the ESP32 end of each cable (not the pot end that we are soldering here)._
 
 1. Assembly is a bit tricky: Push the controls through the chassis from the inside while holding the control panel on the outside. Tighten it all together using the washers and nuts for each control.
 
