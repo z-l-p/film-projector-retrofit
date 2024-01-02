@@ -23,8 +23,8 @@ heatsinkZ = 20; // size of LED heatsink
 //eiki_camtank_cover(); // Cover for hole in camtank after shutter removal - PRINT ROTATED, FLAT SIDE DOWN
 //eiki_LED_mount();
 //eiki_LED_lens_holder(1); // export STL with 0 argument for holder, 1 argument for holder fingers
-//eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
-eiki_power_switch_ring(); // adapter ring to mount power switch in hole for threading lamp
+eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
+//eiki_power_switch_ring(); // adapter ring to mount power switch in hole for threading lamp
 //eiki_terminal_block_mount(); // mount to hold electrical terminal blocks
 //eiki_cable_clip(); // cable clip that mounts on bosses inside projector
 //eiki_cable_clip_mount(); // expanding cleat to insert into large holes inside projector
@@ -166,6 +166,7 @@ module eiki_terminal_block_mount() {
 // NOTE: It barely fits on my 200mm 3D printer bed. Orient diagonally and increase the rounded_rect corner radius to make it fit.
 module eiki_control_panel() {
     plateDims = [250, 40, 1]; // dims of faceplate
+    ledD = 5.4; // dia of hole for status LED
     potD = 7.2; // dia of hole for potentiometer
     potPinD = 3; // dia of hole for potentiometer anti-twist pin (only used for audio volume pot because others mount to metal chassis)
     potPinOffset = 7.8; // offset of hole for potentiometer anti-twist pin
@@ -191,6 +192,7 @@ module eiki_control_panel() {
         translate([selectroOffsetX-22,selectroOffsetY,-0.1]) cylinder(d=selectorMountingD, h=5, $fn=36); // selector switch mount screw
         translate([60,33,-0.1]) cylinder(d=buttonD, h=5, $fn=36); // frame - button
         translate([72.5,20,-0.1]) cylinder(d=screwD, h=5, $fn=24); // screw hole left
+        translate([77.7,6.3,-0.1]) cylinder(d=ledD, h=5, $fn=24); // status LED
         translate([80,33,-0.1]) cylinder(d=buttonD, h=5, $fn=36); // frame + button
         translate([100,33,-0.1]) cylinder(d=potD, h=5, $fn=36); // mot speed ramping pot
         translate([100,6,-0.1]) cylinder(d=potD, h=5, $fn=36); // mot speed pot
