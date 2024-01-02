@@ -28,6 +28,7 @@ Preparation
 	- power transformer
 	- audio amp module
 	- motor
+	- threading lamp
 
 1. Remove and save the parts that you will re-use later: 
 	- camtank
@@ -129,27 +130,27 @@ Safety Note: Li-Ion RC car batteries have no built-in protection circuits. A sho
 
 All unregulated power wiring should be 18AWG or larger, because there are high currents involved. (16AWG is preferred.)
 
-1. Cut two 6-position segments of eurostrip terminal block. (It will be mounted on the chassis near the motor.) Insert jumpers into one side of each strip.
+1. Insert the DC jack and circuit breaker into the holes you drilled on the left side of projector chassis.
+
+1. Cut two 6-position segments of eurostrip terminal block. Insert jumpers into the right side of each strip. Use red paint to mark one strip as positive and one as negative. (see later photos)
+
+1. Cut a length of red/black power cable about 22cm long. Insert into the bottom position of each of the terminals and tighten the jumper connections.  
+
+1. Mount 4 3D-printed cable clips (STL FILENAME?) in the projector chassis (PHOTO OF LOCATIONS). One also needs a cable clip mount (STL FILENAME). You will use these to route the cables along the right side of the projector chassis. 
 
 1. 3D-print the terminal block mount (STL FILENAME?) and screw it onto the projector chassis using an M3 x 5mm+ screw.
 
-1. Cut a length of red/black power cable about 22cm long. Insert into the bottom position of each of the terminals. 
+1. Use self--tapping screws to attach the termina blocks (ground on lower level, positive on the top level). They are wider than the mount, and need to be offset in different directions when mounted. See photo. (The circular overhang in the mount will alow the black cable to exit from the lower terminal block.)
 
-1. Use self--tapping screws to attach the termina blocks (ground on bottom, positive on top).
-
-1. Mount 4 3D-printed cable clips (STL FILENAME?) in the projector chassis (PHOTO OF LOCATIONS). One also needs a cable clip mount (STL FILENAME). Route the cable carefully along the right side of the projector chassis. 
-
-1. Remove the Eiki threading light and prepare the main power switch to go in the hole: Print the adapter ring ("eiki_pwr_switch_adapter.stl") and test the fit. (The ring on the adapter should grab a feature on the projector chassis to keep the switch from rotating.) 
-
-1. Insert the DC jack and circuit breaker into the holes you drilled on the left side of projector chassis. (Insulate connections with heat-shrink tubing.)
+1. Remove the Eiki threading lamp and prepare the main power switch to go in the hole: Print the adapter ring ("eiki_pwr_switch_adapter.stl") and test the fit. (The ring on the adapter should grab a feature on the projector chassis to keep the switch from rotating.) 
 
 1. Wire the 3-position SPDT switch before inserting into hole. (There is very little room hehind the switch, so turn the terminals backwards and insulate them with heat-shrink tubing.)
 
 1. The battery input wires must be long enough to reach from the DC jack to the battery. (You will add an XT60 connector later, after you prepare the motor.)
 
-1. Anchor the power cables so they stay below the belts and mechanics, but above the battery compartment / UI area.
+1. Wire everything according to the diagram and photos. Insulate carefully with heatshrink tubing. Anchor the power cables so they stay below the belts and mechanics, but above the battery compartment / UI area.
 
-(WHERE TO MOUNT THE POWER PROTECTION BOARDS?)
+(ADD INFO ABOUT POWER PROTECTION BOARDS. WHERE TO LOCATE?)
 
 Motor Prep and Wiring
 =====================
