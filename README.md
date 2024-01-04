@@ -11,11 +11,11 @@ Contents
 
  - Bill of Materials
 	
- - Step-by-step instructions for building and using the projector
+ - [Step-by-step instructions](https://github.com/z-l-p/film-projector-retrofit/blob/main/docs/index.md) for building and using the projector
 	
- - Construction Photos
+ - [Construction Photos](https://github.com/z-l-p/film-projector-retrofit/tree/main/docs/images)
 	
- - Datasheets and Diagrams
+ - [Datasheets and Diagrams](https://github.com/z-l-p/film-projector-retrofit/tree/main/docs/datasheets)
 	
  - The build guide is also availabe via direct link: https://z-l-p.github.io/film-projector-retrofit/
 
