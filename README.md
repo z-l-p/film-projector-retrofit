@@ -9,7 +9,7 @@ Contents
 [docs](https://github.com/z-l-p/film-projector-retrofit/tree/main/docs) 
 ---- 
 
- - Bill of Materials
+ - [Bill of Materials] (https://docs.google.com/spreadsheets/d/1z_asHddtIuv7a7RkZ9WCBqF81oMiJ9spwqh7lCQfW5E) (Google Sheets link, to be replaced by static CSV file)
 	
  - [Step-by-step instructions](https://github.com/z-l-p/film-projector-retrofit/blob/main/docs/index.md) for building and using the projector
 	
