@@ -19,7 +19,7 @@ heatsinkZ = 20; // size of LED heatsink
 // ------------- //
 
 //eiki_motormount(); // Mount to attach motor and rotary encoder - PRINT WITH SUPPORTS
-eiki_encoder_magnet_mount(); // 2-piece threaded part to attach encoder magnet to drive shaft - PRINT WITH 0.1mm LAYERS 
+//eiki_encoder_magnet_mount(); // 2-piece threaded part to attach encoder magnet to drive shaft - PRINT WITH 0.1mm LAYERS 
 //eiki_camtank_cover(); // Cover for hole in camtank after shutter removal - PRINT ROTATED, FLAT SIDE DOWN
 //eiki_LED_mount();
 //eiki_LED_lens_holder(1); // export STL with 0 argument for holder, 1 argument for holder fingers
@@ -28,6 +28,9 @@ eiki_encoder_magnet_mount(); // 2-piece threaded part to attach encoder magnet t
 //eiki_terminal_block_mount(); // mount to hold electrical terminal blocks
 //eiki_cable_clip(); // cable clip that mounts on bosses inside projector
 //eiki_cable_clip_mount(); // expanding cleat to insert into large holes inside projector
+//eiki_battery_box(); // battery box (with mounting point for battery protection board and ESP32 PCB slot)
+//translate([160,-64+2.6,0]) rotate([-90,0,0]) eiki_PCB_mount(); 
+eiki_PCB_mount();
 
 // For Eumig P26 only (NOTE: Other P26 parts were created in Blender! They aren't in this file.)
 // ------------------ //
@@ -159,6 +162,134 @@ module eiki_terminal_block_mount() {
 
     
 
+    
+}
+
+// battery box and mounting point for battery protection board
+module eiki_battery_box() {
+    // Origin is center of left mounting hole. Everything is relative to this!
+    mountBaseX = 150; // width of main plate
+    mountBaseInsideY = 64; // height of main plate interior (from mount hole center down to inside of chassis floor)
+    mountBaseExtra = 8; // Extra margin on top and sides
+    mountBaseZ = 3; // thickness of main plate
+    mountHoleD = 3.2; // dia of screw holes for mounting this plate to chassis
+    mountHoleSpan = 90; // X distance between mount holes
+    
+    termMount1OffsetX = 6; // terminal block 1 X offset from origin
+    termMount2OffsetX = 110; // terminal block 2 X offset from origin
+    termMountOffsetY = 30; // both terminal blocks Y offset from origin    
+    termMountD = 3.2; // dia of screw holes for mounting terminal blocks to this plate (for self-tapping screws)
+    termNutHoleD = 6.6; // "dia" of hexagonal pocket for 3mm nuts
+
+    ceilingOffsetY = 23; // offset of ceiling
+    floorY = 1; // thickness of floor lip and stiffening gusset on bottom of model
+    sideZ = 50; // height of right side wall to enclose battery area
+    
+    tabY = 3; // height of tabs
+    tab1OffsetX = 2;
+    tab1Dims = [30,tabY,mountBaseZ]; // dims of left tab that protrudes through chassis
+    tab2OffsetX = 45;
+    tab2Dims = [38,tabY,mountBaseZ]; // dims of middle tab that protrudes through chassis
+    tab3OffsetX = 101;
+    tab3Dims = [38,tabY,mountBaseZ]; // dims of right tab that protrudes through chassis
+    
+    
+    notchD = 18; //dia of notches to clear chassis features
+    notch1Offset = [73, 7, 0];
+    notch2Offset = [105, -ceilingOffsetY+notchD/2+mountBaseZ, 0]; // notch for upper right feature
+    
+    boardSlotYOffset = 23; // location of slot for ESP32 PCB - This is measured from the FLOOR of the projector, NOT the same origin as the other parts (Why? So we can use the same offset for another PCB support model that will hold the other side of the board.)
+    boardSlotX = 5; // depth of slot for PCB
+    boardSlotY = 2; // width of slot for PCB
+        
+    difference() {
+        union() {
+
+            translate([mountBaseX/2-mountBaseExtra/2,-(mountBaseInsideY+mountBaseExtra/2)/2+mountBaseExtra/2,0.1]) rounded_rect(mountBaseX, mountBaseInsideY+mountBaseExtra/2, mountBaseZ, 4); // main plate
+            
+
+            translate([-(mountBaseExtra-8)/2,-mountBaseInsideY,mountBaseZ]) cube([mountBaseX-8, floorY, 3]); // bottom rail (fits against floor of chassis
+            translate([tab1OffsetX,-mountBaseInsideY-tabY,0]) cube(tab1Dims); // chassis tab 1
+            translate([tab2OffsetX,-mountBaseInsideY-tabY,0]) cube(tab2Dims); // chassis tab 2
+            translate([tab3OffsetX,-mountBaseInsideY-tabY,0]) cube(tab3Dims); // chassis tab 3
+            
+            translate([-mountBaseExtra/2,-ceilingOffsetY,0]) cube([mountBaseX, mountBaseZ, sideZ]); // ceiling wall
+            translate([mountBaseX-mountBaseExtra/2-mountBaseZ,-mountBaseInsideY,0]) cube([mountBaseZ, mountBaseInsideY, sideZ]); // right side wall
+            
+            hull(){
+                translate([mountBaseX-mountBaseExtra/2-mountBaseZ-20,-mountBaseInsideY,0]) cube([20, floorY, 3]); // gusset for side wall
+                translate([mountBaseX-mountBaseExtra/2-mountBaseZ,-mountBaseInsideY,0]) cube([mountBaseZ, floorY, sideZ]); // gusset for side wall
+            }
+    }
+            cylinder(d=mountHoleD, h=50, $fn=24); // mount hole 1
+            translate([mountHoleSpan,0,0]) cylinder(d=mountHoleD, h=50, $fn=24); // mount hole 2
+        translate([termMount1OffsetX,-termMountOffsetY,0]) cylinder(d=termMountD, h=50, $fn=24); // term block mount hole 1
+            translate([termMount1OffsetX,-termMountOffsetY,1])  cylinder(d=termNutHoleD, h=50,$fn=6); // term block mount hole 1 pocket
+        translate([termMount2OffsetX,-termMountOffsetY,0]) cylinder(d=termMountD, h=50, $fn=24); // term block mount hole 2
+        translate([termMount2OffsetX,-termMountOffsetY,1])  cylinder(d=termNutHoleD, h=50,$fn=6); // term block mount hole 1 pocket
+        
+    
+        // notch 1
+        translate(notch1Offset) cylinder(d=notchD, h=60, $fn=24);
+    
+        // notch 2
+        hull() {
+            translate([notch2Offset[0],100,notch2Offset[2]]) cylinder(d=notchD, h=60, $fn=24); // notch upper
+            translate(notch2Offset) cylinder(d=notchD, h=60, $fn=24); // notch on axis
+            translate([notch2Offset[0]+100,notch2Offset[1],notch2Offset[2]]) cylinder(d=notchD, h=60, $fn=24); // notch right
+        }
+    }
+    
+   // PCB board slot
+   difference() {
+       translate([mountBaseX-mountBaseExtra/2, -mountBaseInsideY+boardSlotYOffset-mountBaseZ,0]) cube([boardSlotX, boardSlotY+mountBaseZ+mountBaseZ, sideZ]); // outer support
+       translate([mountBaseX-mountBaseExtra/2, -mountBaseInsideY+boardSlotYOffset,2]) cube([boardSlotX, boardSlotY, sideZ]); // inner slot
+       translate([mountBaseX-mountBaseExtra/2, -mountBaseInsideY+boardSlotYOffset+boardSlotY/2,sideZ-boardSlotY*1.333]) rotate([45,0,0]) cube([20, boardSlotY*2, boardSlotY*2]); // interior bevel
+   }
+
+}
+
+// mount for right side of ESP32 PCB (Left side of PCB is supported by slot on battery box)
+// (PRINT THIS WITH SUUPORTS - BIG FLAT SIDE ON THE BUILD PLATE)
+// Note that part is drafted with the bottom resting on the XY axis, unlike its brother the battery box!
+module eiki_PCB_mount() {
+    baseZ = 3;
+    baseX = 16;
+    baseInsideY = 47.2; // Y depth from center of screw hole to inside of PCB slot
+    baseYbottomCut = 5; // Remove this much from the back of the base to clear the eiki microswitch assembly
+    
+    boardSlotZOffset = 23-2.6; // location of slot for ESP32 PCB - This is measured up from the FLOOR of the projector. (also accounts for 2.6mm rise on chassis floor)
+    boardSlotX = 5; // depth of slot for PCB
+    boardSlotZ = 2; // width of slot for PCB
+    
+    screwD = 4; //hole for mounting screw (was originally the Eiki grounding post)
+    screwExtensionY = 19; // length of "peninsula" for screw
+    pinD = 11; // dia of pin that protrudes from bottom of mount to engage hole in chassis
+    screwOffsetY = 19;
+    
+    baseY = baseInsideY-screwOffsetY+baseX/2;
+    baseYbottom = baseInsideY-baseYbottomCut-screwOffsetY+baseX/2;
+    
+    translate([0,0,-3]) cylinder(d=pinD, h=3, $fn=48); // locator pin
+    
+    difference() {
+        hull() {
+            translate([0,0,0]) cylinder(d=screwD*2, h=baseZ, $fn=24); // peninsula
+            translate([0,-19,0]) cylinder(d=screwD*2, h=baseZ, $fn=24); // peninsula
+        }
+        translate([0,-screwOffsetY,0]) cylinder(d=screwD, h=10, $fn=24); // screw hole
+    }
+    
+    
+        hull() {
+            translate([-baseX/2,-baseX/2,0]) cube([baseX,baseYbottom,baseZ]); // main base bottom
+            translate([baseX/2-boardSlotX-2,-baseX/2,boardSlotZOffset-2]) cube([boardSlotX+2,baseInsideY-screwOffsetY+baseX/2,0.01]); // main base top
+        }
+        difference() {
+            translate([baseX/2-boardSlotX-2,-baseX/2,boardSlotZOffset-2]) cube([boardSlotX+2,baseInsideY-screwOffsetY+baseX/2,2+boardSlotZ+2]); // main base top
+            translate([baseX/2-2-10, -baseX/2-2, boardSlotZOffset]) cube([10,baseY,boardSlotZ]); // slot for PCB
+            translate([baseX/2-boardSlotX-2, -baseX/2, boardSlotZOffset-boardSlotZ]) rotate([45,0,0]) cube([boardSlotX, boardSlotZ*2, boardSlotZ*2]); // interior bevel
+    }
     
 }
 
