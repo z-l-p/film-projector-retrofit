@@ -15,7 +15,9 @@ Contents
 	
  - [Construction Photos](https://github.com/z-l-p/film-projector-retrofit/tree/main/docs/images)
 	
- - [Datasheets and Diagrams](https://github.com/z-l-p/film-projector-retrofit/tree/main/docs/datasheets)
+ - [Diagrams](https://github.com/z-l-p/film-projector-retrofit/tree/main/docs/diagrams)
+ 
+ - [Datasheets](https://github.com/z-l-p/film-projector-retrofit/tree/main/docs/datasheets)
 	
  - The build guide is also availabe via direct link: https://z-l-p.github.io/film-projector-retrofit/
 
