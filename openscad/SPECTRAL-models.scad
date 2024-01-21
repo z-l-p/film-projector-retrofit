@@ -250,7 +250,7 @@ module eiki_battery_box() {
 }
 
 // mount for right side of ESP32 PCB (Left side of PCB is supported by slot on battery box)
-// (PRINT THIS WITH SUUPORTS - BIG FLAT SIDE ON THE BUILD PLATE)
+// (PRINT THIS WITH SUPPORTS - BIG FLAT SIDE ON THE BUILD PLATE)
 // Note that part is drafted with the bottom resting on the XY axis, unlike its brother the battery box!
 module eiki_PCB_mount() {
     baseZ = 3;
