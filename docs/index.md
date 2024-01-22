@@ -187,7 +187,7 @@ Most Li-Ion battery packs have protection boards installed, but RC car batteries
 
 1. Fuse: Provides over-current / short-circuit protection. Use a "fast-blow" fuse sized slightly above the maximum current draw of the projector. (We use 10A) Thermal circuit-breakers and resettable PTC fuses are more convenient but unsuitable because they are too slow.
 1. Ideal Diode PCB: Provides reverse polarity protection. This board uses an IC and MOSFETs to instantly disconnect the load if the polarity is backwards. It is much more efficient that a simple series diode, which is often used for this purpose. (Note: If you include the crowbar circuit below then you could replace this PCB with a large diode in parallel with the load. This would create a short-circuit if the power was connected backwards, blowing the fuse.) The diode must be sized to handle the full current of the power supply until the fuse blows. (20-30A would be fine, like the Infineon IDP15E65D1)
-1. "Crowbar" circuit: Protects against over-voltage by creating a short-circuit when the voltage exceeds the zener diode voltage + turn-on voltage of the triac (= about 13.3v). This blows the fuse to protect the power source and projector.
+1. "Crowbar" circuit: Protects against over-voltage by creating a short-circuit when the voltage exceeds the zener diode voltage + turn-on voltage of the triac (= about 13.3v). This blows the fuse to protect the power source and projector. __WARNING. This circuit may need changes. Do not build yet__
 
 Power protection board steps:
 
@@ -218,6 +218,24 @@ Reverse polarity and over-voltage protection: https://electronics.stackexchange.
 Complete Guide to Electronic Protection Circuits: https://www.circuitbasics.com/protection-circuits/
 
 Crowbar Circuit | Design using Thyristor: https://www.electronicshub.org/crowbar-circuit/
+
+ESP32 PCB Mount
+=====================
+The micro-controller wiring comes later, but first we need to 3D-print a mount to hold it. The micro-controller PCB slides into a pair of slots: The left slot is included on the battery box. The right side slot is provided by the part described below.
+
+Note: The PCB mounts are designed to fit "Solderable Breadboard" PCBs available online from China (see BOM). They look like the half-sized Perma Proto from Adafruit, but they are slightly bigger. If you are using the Adafruit boards instead, you need to adjust the battery box or pcb mount models in OpenSCAD to accomodate.
+
+1. 3D-print "eiki\_pcb\_mount.stl".
+
+1. Remove the grounding nut from the Eiki chassis.
+
+1. Attach the PCB mount onto the grounding rod. It should match the hole in the chassis and push down evenly.
+
+1. Return the ground nut and use it to tihten the PCB mount onto the projector.
+
+1. Test the PCB fit with a blank board.
+
+
 
 Motor Prep and Wiring
 =====================
