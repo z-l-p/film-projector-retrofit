@@ -120,56 +120,8 @@ Steps:
 
 1. Test each control by enabling debugging in the code ("debugUI = 1"), compile, upload, and observe the Arduino serial console. You should see 0-4095 range on each pot, and the status of the switches and buttons.
 
-Power Wiring
+Power Safety
 ============
-
-The basic diagram gives an overview of the projector's systems. (Projector-Basic-Diagram.jpg)
-
-The power wiring diagram shows the flow from power inputs to main terminal blocks. (Projector-Power-Wiring-Diagram.jpg)
-
-There are 2 possible power sources: A 12V DC adapter (via 5.5/2.5mm coaxial jack) or a 3S LiPo RC car battery (via XT60 connector). A 3-position SPDT switch selects DC / OFF / Battery. The switched power flows through a fuse and (optional) power protection board before landing at a pair of terminal blocks near the motor. This is the connection point for the LED driver and cooling fan, as well as the motor. The motor has a built-in regulator that supplies 6V DC to the micro-controller and other low-voltage circuits.
-
-All unregulated power wiring should be 18AWG or larger, because there are high currents involved. (16AWG is preferred.) Cable with silicone insulation is recommended because it won't melt when heated. These steps are written mostly in the order of the signal flow through the system.
-
-
-1. Drill holes in the front of projector chassis near the rear cover latching point. Insert the DC jack and fuse holder.
-
-1. The outer terminal of the DC jack will serve as a common ground for the system. The positive signal path flows from switch -> fuse -> power protection board -> terminal block
-	 
-1. Remove the Eiki threading lamp and prepare the power switch (3-position SPDT) to go in the hole: Print the adapter ring ("eiki\_pwr\_switch\_adapter.stl") and test the fit. (The ring on the adapter should grab a feature on the projector chassis to keep the switch from rotating.) 
-
-1. Wire the power switch before inserting into hole. There is very little room behind the switch, so you can't solder it after mounting. Turn the terminals backwards and insulate them with heat-shrink tubing as shown in photo.
-	- Top: DC Input
-	- Center: Output to fuse
-	- Bottom: Battery Input
-	
-1. Add the battery cable. It must be long enough to reach from the battery (in the bottom of the projector) to these points:
-	 - Positive: the bottom terminal of the power switch
-	 - Negative: the outer terminal of the DC jack
-	 - (Leave the battery side of the cable un-terminated. You will add an XT60 connector after you prepare the motor. These photos show the future connector already attached.)
-
-1. 3D-Print the battery box (eiki\_battery\_box.stl). If using the power protection circuit, mount its terminal blocks to the back of the battery box with 2 M3 x 10mm screws/nuts. (The screw heads should be recessed to make more room for the battery.)
-
-1. If using the power protection circuit, wire it like this (leaving enough slack in the cables to maneuver the battery box into place).
-	- Fuse output -> power protection board (+) -> terminal block (+)
-	- DC jack outer -> power protection board (-) -> terminal block (-)
-	- (The terminal blocks are explained in the next step, so leave the output cables long for now.)
-	
-1. Mount the battery box. The tabs on the bottom should engage with the slots on the bottom of the projector chassis. There are 2 holes on top for M3 x 5mm screws. (The right hole is hard to reach, but you can detach part of the auto-load mechanism to reach it.) The box will hold the battery in place (max battery size 155 x 46 x 30 mm) and protect the pots and switches of the UI.
-
-1. 3D-print the cable clips (eiki\_cable\_clip.stl) and install in the projector chassis with M3 x 5mm screws (PHOTO OF LOCATIONS). You will use these to route the cables along the sides of the projector chassis. The clip in the upper right side also needs a mount (eiki\_cable\_clip\_mount.stl) to attach to the unthreaded hole where it belongs. Use a longer (10mm+) M3 screw for this clip.
-
-1. 3D-print the terminal block mount (eiki\_terminal\_block\_mount.stl) and screw it onto the projector chassis using an M3 x 5mm+ screw.
-
-1. Cut two 6-position segments of eurostrip terminal block. Insert jumpers into the right side of each strip. Use red paint to mark one strip as positive and one as negative. (see later photos)
-
-1. Use self--tapping screws to attach the termina blocks (ground on lower level, positive on the top level). They are wider than the mount, and need to be offset in different directions when mounted. See photo. (The circular overhang in the mount will allow the black cable to exit from the lower terminal block.)
-
-1. Find the power cable you completed in the earlier steps (from power protection board if installed, otherwise from the fuse). Route the cable around the right side of the projector using the cable clips to keep the belt area clear. Cut cable to length, then insert into the bottom position of each of the terminal blocks and tighten the jumper connections. (Remember to leave extra cable length in case you need to remove the terminal blocks or battery box.)
-
-Power Protection Circuit
-============
-The fuse is essential to protect the projector and battery in case of a short circuit. There are other risks that can be reduced by using an additional power protection circuit...
 
 Li-Ion batteries need protection from: 
 
@@ -181,49 +133,107 @@ The projector electronics need protection from:
 
 1. Over-voltage above 13 volts: The motor's ESC expects 9-12.6v and has no over-voltage protection. The LED driver can withstand much higher voltages.
 1. Over-current: If the motor stalls or there is an internal short-circuit, the projector electronics could be badly damaged.
-1. Reverse Polarity: This would instantly destroy most of the electronics.
+1. Reverse Polarity: If a battery or power supply were connected backwards, it would destroy most of the electronics.
 
-Most Li-Ion battery packs have protection boards installed, but RC car batteries have none. The ISDT battery charger provides these protections during charging, but no charger should be left unattended (especially overnight). The Hobbywing motor has a low voltage disconnect but no built-in protection against reverse polarity or over-voltage. The circuit I describe can be installed inside the projector to provide some protections regardless of power supply. For maximum safety you could also install a "3S battery protection PCB" on each battery, but make sure it can pass at least 10A to prevent accidentally tripping the over-current protection. Our protection circuit contains:
+Most Li-Ion battery packs have protection boards installed, but RC car batteries have none. The ISDT battery charger provides these protections during charging, but no charger should be left unattended (especially overnight). The Hobbywing motor has under-voltage disconnect but no protection against reverse polarity or over-voltage. 
 
-1. Fuse: Provides over-current / short-circuit protection. Use a "fast-blow" fuse sized slightly above the maximum current draw of the projector. (We use 10A) Thermal circuit-breakers and resettable PTC fuses are more convenient but unsuitable because they are too slow.
-1. Ideal Diode PCB: Provides reverse polarity protection. This board uses an IC and MOSFETs to instantly disconnect the load if the polarity is backwards. It is much more efficient that a simple series diode, which is often used for this purpose. (Note: If you include the crowbar circuit below then you could replace this PCB with a large diode in parallel with the load. This would create a short-circuit if the power was connected backwards, blowing the fuse.) The diode must be sized to handle the full current of the power supply until the fuse blows. (20-30A would be fine, like the Infineon IDP15E65D1)
-1. "Crowbar" circuit: Protects against over-voltage by creating a short-circuit when the voltage exceeds the zener diode voltage + turn-on voltage of the triac (= about 13.3v). This blows the fuse to protect the power source and projector. __WARNING. This circuit may need changes. Do not build yet__
+The protections below are installed inside the projector to provide protection regardless of power supply. For maximum safety you could also install a "3S battery protection PCB" on the battery, but make sure it can pass at least 10A to prevent accidentally tripping the over-current protection.
 
-Power protection board steps:
+1. A glass fuse provides over-current / short-circuit protection. Use a "fast-blow" fuse sized slightly above the maximum current draw of the projector. (We use 10A) Thermal circuit-breakers and resettable PTC fuses are more convenient but don't use them. They are much too slow!
+1. DVB01 Voltage Protection Board (sold under many names with keywords like "Digital Window Voltage Comparator Overvoltage Undervoltage Protection Voltage Measurement Module"). This is an inexpensive module with a microcontroller, LED display, and 10A relay. (Make sure you have the 12v variation, not 5v or 24v). We will program it to monitor input voltage and only engage the relay if the voltage is between 9 and 13v. It also protects from reverse polarity. (The relay is normally off unless the micro-controller is powered, and its voltage regulator has reverse-polarity protection.) _Note: The circuit draws about 2mA of current even when the relay is switched off, so it won't protect the battery from under-voltage if you leave the projector switched on for days after running down the battery to the cutoff._
 
-1. Solder wires to the ideal diode board to accommodate terminal blocks. On the Eiki projector, the total length of the assembly should be 100mm to fit between the terminal blocks.
+Power Wiring
+============
 
-1. Identify the pins of the triac. A BTA41 is shown in the photos. we will use this as a "crowbar" to short the power supply when the zener diode senses an over-voltage condition.
+The basic diagram gives an overview of the projector's systems. (Projector-Basic-Diagram.jpg)
 
-1. Turn the triac over so the metal tab faces up. Carefully bend the leads so the gate turns up and the others turn down. Bend the + and - leads match the spacing on the ideal diode board.
+The power wiring diagram shows the flow from power inputs to main terminal blocks. (Projector-Power-Wiring-Diagram.jpg)
 
-1. Add a 220 ohm resistor between gate and - 
+There are 2 possible power sources: A 12V DC adapter (via 5.5/2.5mm coaxial jack) or a 3S LiPo RC car battery (via XT60 connector). A 3-position SPDT switch selects DC / OFF / Battery. The switched power flows through a fuse and DVB01 power protection board before landing at a pair of terminal blocks near the motor. This is the connection point for the LED driver and cooling fan, as well as the motor. The motor has a built-in regulator that supplies 6V DC to the micro-controller and other low-voltage circuits.
 
-1. Add a 12v zener diode between gate and + (with the stripe facing +)
+All power wiring should be 18AWG or larger, because there are high currents involved. (16AWG is preferred.) Cable with silicone insulation is recommended because it won't melt when heated. These steps are written mostly in the order of the signal flow through the system.
 
-1. Solder the triac assembly on top of the ideal diode board, in parallel with the output pads.
 
-1. If you have an adjustable power supply with current limiting, test the circuit before installation: attach a small DC load like a fan or lamp. Set a current limit around 500mA and increase the voltage slowly. When it exceeds approximately 13 volts the triac should cause a short-circuit and the power supply should go into current-limiting until you remove power. If you connect the power with the wrong polarity, no current will flow to the load and nothing will be harmed.
+1. Drill holes in the front of projector chassis and install the DC jack and fuse holder.
 
-1. After testing, use 20mm heat-shrink tubing or electrical tape to insulate the circuit. (Be sure to mark the direction of current flow.)
+1. The outer terminal of the DC jack will serve as a common ground for the power system. The positive signal path flows from sources (battery & DC in) -> switch -> fuse -> power protection board -> terminal block
+	 
+1. Remove the Eiki threading lamp and prepare the power switch (3-position SPDT) to go in the hole: Print the adapter ring ("eiki\_pwr\_switch\_adapter.stl") and test the fit. (The ring on the adapter should grab a feature on the projector chassis to keep the switch from rotating.) 
 
-1. Attach terminal blocks to either end, and mark their polarity.
+1. Wire the power switch before inserting into hole. (There is very little room behind the switch, so you can't solder it after mounting.) Turn the terminals backwards and insulate them with heat-shrink tubing as shown in photo.
+	- Top: DC Input
+	- Center: Output to fuse
+	- Bottom: Battery Input
+	
+1. Add the battery cable. It must be long enough to reach from the battery (in the bottom of the projector) to these points:
+	 - Positive: the bottom terminal of the power switch
+	 - Negative: the outer terminal of the DC jack
+	 - (Leave the battery side of the cable un-terminated. You will add an XT60 connector after you prepare the motor. These photos show the future connector already attached.)
 
-Further reading:
+1. 3D-Print the battery box (eiki\_battery\_box.stl) and collect the parts shown in the photo (4 section terminal blocks, 2 jumpers, DVB01 power protection board, 20mm x 22cm velcro strap).
 
-MiniBar crowbar circuit: https://a-2-z.tech/home/projects/minibar-crowbar-circuit/
+1. The right side of the battery box has a slot to hold the ESP32 PCB. There is a lock for the PCB slot. Assemble it with an M3 x 12mm+ screw and 2 M3 washers. Mount as shown and tighten slightly.
 
-Reverse polarity and over-voltage protection: https://electronics.stackexchange.com/questions/452935/overvoltage-and-reverse-polarity-protection
+1. Thread the velcro strap through the slots. (This will hold the battery in place.)
 
-Complete Guide to Electronic Protection Circuits: https://www.circuitbasics.com/protection-circuits/
+1. On the back of the battery box, add the terminal block strip (painted red/black as shown) with 2 M3 x 12mm+ screws and nuts.
 
-Crowbar Circuit | Design using Thyristor: https://www.electronicshub.org/crowbar-circuit/
+1. Insert M3 x 10mm screws into the 4 PCB mounting holes and add 3D-printed standoffs from the battery box model.
+
+1. Mount the DVB01 board with 4 M3 nuts.
+
+1. Wire the power inputs shown in the photos (leaving enough slack in the cables to maneuver the battery box into place).
+	- Projector Fuse output -> terminal block (+) with jumper to neighboring terminal
+	- Projector DC jack (-) -> terminal block (-) with jumper to neighboring terminal
+	
+1. Connect the terminal block to the DVB01 board's left side, as shown in the photos. (These are low current connections, so thinner wires are OK.)
+	- Terminal block (-) -> DVB01 (V-)
+	- Terminal block (+) -> DVB01 (V+)
+	- Terminal block (+) -> DVB01 (DC+)
+	
+1. Now program the DVB01 power protection board:
+
+	- Consult the instruction manual ("DVB01 Voltage Relay Module (12V )User Manual) to understand the menu navigation.
+
+	-  P-0 (mode) = F-4 (engage relay when voltage is between limits)
+
+	- P-1 (lower voltage limit) = 9v
+
+	- P-2 (upper voltage limit) = 13v
+
+	- P-3 (voltage correction) These modules are not well calibrated from the factory. If you have an accurate volt meter, adjust the +/- buttons until the module's display matches your meter's measurement of the input voltage.
+
+	- P-4 (time delay before relay engages) = 0.5
+
+	- P-5 (time delay before relay disengages) = 0
+
+	- If you have a variable power supply, test the module to make sure it works
+
+	- Turn on "power saving mode": Long press SW1 until display blinks. It will turn off after 10 seconds of inactivity.
+
+1. Cut a 50cm length of black/red power cable, and a shorter length of red power cable. Connect the power path through the DVB01's relay, as shown in photos.
+	- Terminal block (+) -> DVB01 (NO) on right side of board (use the short red cable)
+	- Terminal block (-) -> black wire of 50cm power cable
+	- DVB01 (COM) on right side of board -> red wire of 50cm power cable
+	- (You will terminate the 50cm power cable in a later step)
+	
+1. Mount the battery box. Flip it over and orient it so the tabs on the bottom engage with the slots on the projector chassis. There are 2 holes on top for M3 x 5mm screws. (The right hole is hard to reach, but you can detach part of the auto-load mechanism to reach it.) The velcro will hold the battery in the box (max battery size about 155 x 46 x 30 mm).
+
+1. 3D-print the cable clips (eiki\_cable\_clip.stl) and install in the projector chassis with M3 x 5mm screws (PHOTO OF LOCATIONS). You will use these to route the cables along the sides of the projector chassis. The clip in the upper right side also needs a mount (eiki\_cable\_clip\_mount.stl) to attach to the unthreaded hole where it belongs. Use a longer (10mm+) M3 screw for this clip.
+
+1. 3D-print the terminal block mount (eiki\_terminal\_block\_mount.stl) and screw it onto the projector chassis using an M3 x 5mm+ screw.
+
+1. Cut two 6-position segments of eurostrip terminal block. Insert jumpers into the right side of each strip. Use red paint to mark one strip as positive and one as negative. (see later photos)
+
+1. Use self--tapping screws to attach the termina blocks (ground on lower level, positive on the top level). They are wider than the mount, and need to be offset in different directions when mounted. See photo. (The circular overhang in the mount will allow the black cable to exit from the lower terminal block.)
+
+1. Find the 50cm power cable you completed earlier. Route the cable around the right side of the projector using the cable clips to keep the belt area clear. Cut cable to length, then insert into the bottom position of each of the terminal blocks and tighten the jumper connections. (Remember to leave extra cable length in case you need to remove the terminal blocks or battery box.)
 
 ESP32 PCB Mount
 =====================
 The micro-controller wiring comes later, but first we need to 3D-print a mount to hold it. The micro-controller PCB slides into a pair of slots: The left slot is included on the battery box. The right side slot is provided by the part described below.
 
-Note: The PCB mounts are designed to fit "Solderable Breadboard" PCBs available online from China (see BOM). They look like the half-sized Perma Proto from Adafruit, but they are slightly bigger. If you are using the Adafruit boards instead, you need to adjust the battery box or pcb mount models in OpenSCAD to accomodate.
+Note: The PCB mounts are designed to fit "Solderable Breadboard" PCBs available online from China (see BOM). They look like the "Half-Sized Perma Proto" from Adafruit (# 1609) which is 8mm shorter. If you are using the Adafruit boards instead, you need to adjust the battery box or pcb mount models in OpenSCAD to accomodate the narrower width.
 
 1. 3D-print "eiki\_pcb\_mount.stl".
 
@@ -231,7 +241,7 @@ Note: The PCB mounts are designed to fit "Solderable Breadboard" PCBs available 
 
 1. Attach the PCB mount onto the grounding rod. It should match the hole in the chassis and push down evenly.
 
-1. Return the ground nut and use it to tihten the PCB mount onto the projector.
+1. Return the ground nut and use it to tighten the PCB mount onto the projector.
 
 1. Test the PCB fit with a blank board.
 
@@ -269,7 +279,7 @@ Test motor first with a servo tester or RC receiver. (We will modify the motor w
 Motor & Belt Installation
 ==================
 
-1. Prepare 3D-printed motor bracket (STL filename?). There are 3 pockets on the underside that need supports removed. Insert M3 nuts into the hexagonal pockets and secure with a drop of CA glue around the perimeter of each nut. (These will be for the encoder bracket added later.)
+1. Prepare 3D-printed motor bracket (eiki\_motormount.stl). There are 3 pockets on the underside that need supports removed. Insert M3 nuts into the hexagonal pockets and secure with a drop of CA glue around the perimeter of each nut. (These will be for the encoder bracket added later.)
 
 1. Use three M3 x 5mm screws to attach aluminum motor mount to 3D-printed bracket. (These should be included when you purchased the mount.) Secure with thread-locker. One will fit into a recessed pocket, as shown in photo. (This is required to clear an existing bolt on the Eiki chassis.)
 

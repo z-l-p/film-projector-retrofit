@@ -28,9 +28,9 @@ heatsinkZ = 20; // size of LED heatsink
 //eiki_terminal_block_mount(); // mount to hold electrical terminal blocks
 //eiki_cable_clip(); // cable clip that mounts on bosses inside projector
 //eiki_cable_clip_mount(); // expanding cleat to insert into large holes inside projector
-//eiki_battery_box(); // battery box (with mounting point for battery protection board and ESP32 PCB slot)
+eiki_battery_box(); // battery box (with mounting points for voltage protection board and ESP32 PCB slot)
 //translate([160,-64+2.6,0]) rotate([-90,0,0]) eiki_PCB_mount(); 
-eiki_PCB_mount();
+//eiki_PCB_mount();
 
 // For Eumig P26 only (NOTE: Other P26 parts were created in Blender! They aren't in this file.)
 // ------------------ //
@@ -175,15 +175,25 @@ module eiki_battery_box() {
     mountHoleD = 3.2; // dia of screw holes for mounting this plate to chassis
     mountHoleSpan = 90; // X distance between mount holes
     
-    termMount1OffsetX = 6; // terminal block 1 X offset from origin
-    termMount2OffsetX = 110; // terminal block 2 X offset from origin
-    termMountOffsetY = 30; // both terminal blocks Y offset from origin    
-    termMountD = 3.2; // dia of screw holes for mounting terminal blocks to this plate (for self-tapping screws)
-    termNutHoleD = 6.6; // "dia" of hexagonal pocket for 3mm nuts
+    termMountOffsetX = 6; // terminal block holes, X offset from origin 
+    termMountOffsetY = 30; // top terminal block hole, Y offset from origin (lower hole will be 20mm lower)
+    termMountD = 3.2; // dia of screw holes for mounting terminal blocks to this plate
+    termNutHoleD = 6.6; // dia of pocket for screw heads
+    
+    boardMountOffsetX = 30; // upper left mount hole for DVB01, X offset from origin
+    boardMountOffsetY = 16; // upper left mount hole for DVB01, Y offset from origin
+    boardSpanX = 60; // X distance between holes
+    boardSpanY = 37; // Y distance between holes
+    
+    strapX = 21; // slot for velcro strap to keep battery in place
+    strapY = 2; // slot for velcro strap to keep battery in place
+    strapOffsetX = 53.6;
+    
+    lockOffsetZ = 4.8; // height offset of PCB lock relative to top edge of wall
 
     ceilingOffsetY = 23; // offset of ceiling
     floorY = 1; // thickness of floor lip and stiffening gusset on bottom of model
-    sideZ = 50; // height of right side wall to enclose battery area
+    sideZ = 50; // height of ceiling and right side wall to enclose battery area
     
     tabY = 3; // height of tabs
     tab1OffsetX = 2;
@@ -213,32 +223,67 @@ module eiki_battery_box() {
             translate([tab2OffsetX,-mountBaseInsideY-tabY,0]) cube(tab2Dims); // chassis tab 2
             translate([tab3OffsetX,-mountBaseInsideY-tabY,0]) cube(tab3Dims); // chassis tab 3
             
-            translate([-mountBaseExtra/2,-ceilingOffsetY,0]) cube([mountBaseX, mountBaseZ, sideZ]); // ceiling wall
+            //translate([-mountBaseExtra/2,-ceilingOffsetY,0]) cube([mountBaseX, mountBaseZ, sideZ]); // ceiling wall
+            
+            // ceiling wall with rounded corner
+            hull() {
+                translate([0,-ceilingOffsetY,0]) cube([mountBaseX-mountBaseExtra/2, mountBaseZ, sideZ]); // ceiling wall
+                translate([0,-ceilingOffsetY+mountBaseZ, sideZ-mountBaseExtra/2]) rotate([90,0,0]) cylinder(d=mountBaseExtra, h=mountBaseZ, $fn=24); // upper rounded corner
+                translate([-mountBaseExtra/2,-ceilingOffsetY,0]) cube([10, mountBaseZ, 10]); // lower square corner
+            }
             translate([mountBaseX-mountBaseExtra/2-mountBaseZ,-mountBaseInsideY,0]) cube([mountBaseZ, mountBaseInsideY, sideZ]); // right side wall
             
             hull(){
                 translate([mountBaseX-mountBaseExtra/2-mountBaseZ-20,-mountBaseInsideY,0]) cube([20, floorY, 3]); // gusset for side wall
                 translate([mountBaseX-mountBaseExtra/2-mountBaseZ,-mountBaseInsideY,0]) cube([mountBaseZ, floorY, sideZ]); // gusset for side wall
             }
-    }
-            cylinder(d=mountHoleD, h=50, $fn=24); // mount hole 1
-            translate([mountHoleSpan,0,0]) cylinder(d=mountHoleD, h=50, $fn=24); // mount hole 2
-        translate([termMount1OffsetX,-termMountOffsetY,0]) cylinder(d=termMountD, h=50, $fn=24); // term block mount hole 1
-            translate([termMount1OffsetX,-termMountOffsetY,1])  cylinder(d=termNutHoleD, h=50,$fn=6); // term block mount hole 1 pocket
-        translate([termMount2OffsetX,-termMountOffsetY,0]) cylinder(d=termMountD, h=50, $fn=24); // term block mount hole 2
-        translate([termMount2OffsetX,-termMountOffsetY,1])  cylinder(d=termNutHoleD, h=50,$fn=6); // term block mount hole 1 pocket
+        }
+    cylinder(d=mountHoleD, h=50, $fn=24); // mount hole 1
+    translate([mountHoleSpan,0,0]) cylinder(d=mountHoleD, h=50, $fn=24); // mount hole 2
+
+    translate([termMountOffsetX,-termMountOffsetY,0]) mountHole(); // top term block mount hole
+    translate([termMountOffsetX,-termMountOffsetY-20,0]) mountHole(); // top term block mount hole
+    
+    translate([boardMountOffsetX,-boardMountOffsetY,0]) mountHole(); // top left board mount hole
+    translate([boardMountOffsetX+boardSpanX,-boardMountOffsetY,0]) mountHole(); // top right board mount hole
+    translate([boardMountOffsetX,-boardMountOffsetY-boardSpanY,0]) mountHole(); // bottom left board mount hole
+    translate([boardMountOffsetX+boardSpanX,-boardMountOffsetY-boardSpanY,0]) mountHole(); // bottom right board mount hole
+        
+    translate([strapOffsetX,-ceilingOffsetY-strapY,0])  cube([strapX, strapY, 50]); // top slot for velcro strap
+    translate([strapOffsetX,-mountBaseInsideY,0])  cube([strapX, strapY, 50]); // bottom slot for velcro strap
+        
         
     
-        // notch 1
+        // notch 1 to clear chassis feature
         translate(notch1Offset) cylinder(d=notchD, h=60, $fn=24);
     
-        // notch 2
+        // notch 2 to clear chassis feature
         hull() {
             translate([notch2Offset[0],100,notch2Offset[2]]) cylinder(d=notchD, h=60, $fn=24); // notch upper
             translate(notch2Offset) cylinder(d=notchD, h=60, $fn=24); // notch on axis
             translate([notch2Offset[0]+100,notch2Offset[1],notch2Offset[2]]) cylinder(d=notchD, h=60, $fn=24); // notch right
         }
+
     }
+    
+    // print 4 standoffs along edge, for the DVB01 board
+    translate([105,-12,0]) standoff();
+    translate([115,-12,0]) standoff();
+    translate([125,-12,0]) standoff();
+    translate([135,-12,0]) standoff();
+    
+    // print PCB lock
+    //translate([mountBaseX-mountBaseExtra/2+mountBaseZ/2, -ceilingOffsetY,sideZ]) PCBlock(); // simulate assembly
+    translate([110, 0,lockOffsetZ+2]) rotate([0,180,90]) PCBlock();
+    
+    // support for PCB lock
+    difference() {
+        hull() {
+            translate([mountBaseX-mountBaseExtra/2, -ceilingOffsetY-3,0]) cube([0.1, 6, sideZ]); // flat part
+            translate([mountBaseX-mountBaseExtra/2+mountBaseZ/2, -ceilingOffsetY,sideZ-10]) cylinder(r=mountBaseZ,h=10, $fn=24); // round part
+        }
+        translate([mountBaseX-mountBaseExtra/2+mountBaseZ/2, -ceilingOffsetY,sideZ-10]) cylinder(d=3,h=20, $fn=24); // hole for PCB lock
+}
     
    // PCB board slot
    difference() {
@@ -247,7 +292,37 @@ module eiki_battery_box() {
        translate([mountBaseX-mountBaseExtra/2, -mountBaseInsideY+boardSlotYOffset+boardSlotY/2,sideZ-boardSlotY*1.333]) rotate([45,0,0]) cube([20, boardSlotY*2, boardSlotY*2]); // interior bevel
    }
 
+    // mounting hole with pocket for screw head
+    module mountHole() {
+        cylinder(d=termMountD, h=50, $fn=24); // term block mount hole
+        translate([0,0,1])  cylinder(d=termNutHoleD, h=50); // term block mount hole pocket
+    }
+    
+    // standoff for mounting DVB01 board
+    module standoff() {
+        difference(){
+            cylinder(d=7, h=3.2, $fn=48); // outer
+            cylinder(d=mountHoleD+0.2, h=4, $fn=48); // cut hole (a little big so it doesn't get stuck)
+        }
+    }
+    
+    // hinged lock to keep PCB in place
+    module PCBlock() {
+        
+        
+        difference() {
+            union() {
+                cylinder(r=mountBaseZ, h=lockOffsetZ, $fn=24); // pedestal
+                hull() {
+                    translate([0,0,lockOffsetZ]) cylinder(r=mountBaseZ, h=2, $fn=24); // hull upper
+                    translate([0,-mountBaseInsideY+boardSlotYOffset+ceilingOffsetY,lockOffsetZ])cylinder(r=mountBaseZ*2, h=2, $fn=36); // hull lower
+                }
+        }
+        cylinder(d=mountHoleD+0.2, h=30, $fn=16, center=true); // cut hole (a little big so it doesn't get stuck)
+        }
+    }
 }
+
 
 // mount for right side of ESP32 PCB (Left side of PCB is supported by slot on battery box)
 // (PRINT THIS WITH SUPPORTS - BIG FLAT SIDE ON THE BUILD PLATE)
