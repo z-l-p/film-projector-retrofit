@@ -76,9 +76,10 @@ int debugLed = 0;      // serial messages for LED info
 #define ledPin 2          // PWM output for LED (On 38pin HiLetGo ESP32 board, GPIO 2 is the built-in LED)
 #define NeoPixelPin 15    // output pin for NeoPixel status LED(s)
 
-// Kalman Filter Library Setup
+// Simple Kalman Filter Library Setup
+// see tuning advice here: https://www.mathworks.com/help/fusion/ug/tuning-kalman-filter-to-improve-state-estimation.html
 float kalmanMEA = 2;    // "measurement noise" (also used to seed estimated noise)
-float kalmanQ = 0.005;  // "Process Noise" (smaller numbers = more smoothing but more lag)
+float kalmanQ = 0.005;  // "Process Noise" (smaller = more smoothing but more latency)
 
 SimpleKalmanFilter motPotKalman(kalmanMEA, kalmanMEA, kalmanQ);
 SimpleKalmanFilter ledPotKalman(kalmanMEA, kalmanMEA, kalmanQ);
