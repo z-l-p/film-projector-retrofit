@@ -454,17 +454,17 @@ Calibration
 Synchronize the Shutter
 -------------
 
-Before projecting film, the digital shutter needs to be calibrated to match the film movement.
+Before projecting film, the digital shutter needs to be synchronized to match the film movement.
 
 1. Start with the projector assembled, tested, and threaded with film.
 
-1. Set the shutter blades to 1 and the shutter angle to 180d. Se the lamp to a low brightness to avoid film burns. As you move the projector mechanism, you should see one LED blink per frame, but the timing will be wrong.
+1. Set the shutter blades to 1 and the shutter angle to 180d. Set the lamp to a low brightness to avoid film burns. As you move the projector mechanism, you should see one LED blink per frame, but the timing will be wrong.
 
 1. Hold the shutter pulley and use pliers to rotate the magnet mount until the LED is ON when the film is still, and OFF during pulldown movement.
 
-1. Switch to 2 shutter blades (mainting the 180d angle) and repeat the calibration.
+1. Switch to 2 shutter blades (180d shutter angle) and repeat the calibration.
 
-1. Switch to 3 shutter blades (mainting the 180d angle) and repeat. With these settings, it should be difficult to make the LED pulses match the film movement. A moment of pulldown might be illuminated, but in practice you can just use a narrower shutter angle to eliminate it.
+1. Switch to 3 shutter blades (180d shutter angle) and repeat. With these settings, it should be difficult to match the LED pulses to the film movement without illuminating a bit of pulldown. In practice you can just use a narrower shutter angle to eliminate it.
 
 
 Focus the LED
