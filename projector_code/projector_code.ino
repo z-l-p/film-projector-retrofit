@@ -37,7 +37,7 @@
 int debugEncoder = 0;  // serial messages for encoder count and shutterMap value
 int debugUI = 0;       // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0;   // serial messages for frame count and FPS
-int debugMotor = 0;    // serial messages for motor info
+int debugMotor = 1;    // serial messages for motor info
 int debugLed = 0;      // serial messages for LED info
 
 // Basic setup options (enable the options based on your hardware choices)
@@ -78,8 +78,9 @@ int debugLed = 0;      // serial messages for LED info
 
 // Simple Kalman Filter Library Setup
 // see tuning advice here: https://www.mathworks.com/help/fusion/ug/tuning-kalman-filter-to-improve-state-estimation.html
-float kalmanMEA = 2;    // "measurement noise" (also used to seed estimated noise)
-float kalmanQ = 0.005;  // "Process Noise" (smaller = more smoothing but more latency)
+// and this playlist: https://www.youtube.com/watch?v=CaCcOwJPytQ&list=PLX2gX-ftPVXU3oUFNATxGXY90AULiqnWT
+float kalmanMEA = 2;    // "measurement noise estimate" (larger = we assmume there is more noise/jitter in input)
+float kalmanQ = 0.005;  // "Process Noise" AKA "gain" (smaller = more smoothing but more latency)
 
 SimpleKalmanFilter motPotKalman(kalmanMEA, kalmanMEA, kalmanQ);
 SimpleKalmanFilter ledPotKalman(kalmanMEA, kalmanMEA, kalmanQ);
@@ -93,6 +94,8 @@ SimpleKalmanFilter ledSlewPotKalman(kalmanMEA, kalmanMEA, kalmanQ);
 SimpleKalmanFilter shutBladesPotKalman(kalmanMEA, kalmanMEA, kalmanQ);
 SimpleKalmanFilter shutAnglePotKalman(kalmanMEA, kalmanMEA, kalmanQ);
 #endif
+
+SimpleKalmanFilter FPSrealAvg(1.5, 1.5, 0.01); // for smoothing the FPSreal calculation (uses custom parameters)
 
 #if (enableButtons)
 // Bounce2 Library setup for single frame buttons
@@ -160,8 +163,8 @@ const int motPWMRes = 16;                 // bits of resolution for extra contro
 const int motPWMFreq = 50;                // PWM frequency (50Hz is standard for RC servo / ESC)
 int motPWMPeriod = 1000000 / motPWMFreq;  // microseconds per pulse
 const int motPWMChannel = 2;              // ESP32 LEDC channel number. Pairs share settings (0/1, 2/3, 4/5...) so skip one to insure your settings work!
-int motMinUS = 1788;                      // motor pulse length at -24fps (set this by testing)
-int motMaxUS = 1220;                      // motor pulse length at +24fps (set this by testing)
+int motMinUS = 1777;                      // motor pulse length at -24fps (set this by testing)
+int motMaxUS = 1229;                      // motor pulse length at +24fps (set this by testing)
 
 
 // prototypes for ISR functions that will be defined in later code 
@@ -320,18 +323,10 @@ void setup() {
 
 void loop() {
   
- 
 
   // update these functions @ 50 Hz
   if (timerUI >= 20) {
     as5047MagCheck();  // check for encoder magnet proximity
-
-  if (countPeriod > 100000) {
-      //FPSsafe = 0; // if we're stopped, the encoder stops counting so FPSreal will never indicate 0 FPS
-      //Serial.println(countPeriod);
-      //send_LEDC();
-    }
-
     readUI();
     updateLed();
     updateMotor();
@@ -341,7 +336,7 @@ void loop() {
 
   // These happen once per encoder count
   if (countOld != count) {
-    FPSsafe = FPSreal; // copy volatile global from ISR so it's safe for other routines
+    FPSsafe = FPSrealAvg.updateEstimate(FPSreal);; // copy volatile global from ISR and smooth it so it's safe for other routines
     if (debugEncoder) {
       Serial.print("Count: ");
       Serial.print(count);
@@ -359,8 +354,8 @@ void loop() {
       Serial.print("FRAME: ");
       Serial.print(frame);
       Serial.print(" (");
-      Serial.print(FPSreal);
-      Serial.println(" real fps)");
+      Serial.print(FPSsafe);
+      Serial.println(" real fps avg)");
     }
     frameOld = frame;
   }
@@ -429,8 +424,6 @@ void IRAM_ATTR pinChangeISR() {
 // send info to the LEDC peripheral to update LED PWM (abstracted here because it's called from loop or ISR)
 void IRAM_ATTR send_LEDC() {
   bool shutterState = shutterMap[count];  // copy shutter state to local variable in case it changes during the ISR execution
-  //float FPSlocal = FPSsafe; // copy to local variable
-  //if (FPSlocal < 0.2) shutterState = 0;   // cheat the shutter closed in case we're stopped, to prevent film burns
 
   if (LedDimMode) {  // PWM mode
     if (shutterState == 1 || enableShutter == 0) {
@@ -712,8 +705,8 @@ void updateMotor() {
     Serial.print(motSlewVal);
     Serial.print(", FPS Target: ");
     Serial.print(FPStarget);
-    Serial.print(", FPS Real: ");
-    Serial.print(FPSreal);
+    Serial.print(", FPS Real Avg: ");
+    Serial.print(FPSsafe);
     Serial.print(", Mot uS: ");
     Serial.print(motSpeedUS);
     Serial.print(", Mot PWM Duty: ");
