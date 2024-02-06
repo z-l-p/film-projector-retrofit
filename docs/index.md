@@ -346,6 +346,8 @@ Driver Wiring
 ----------
 See LED Driver Wiring diagram (LED-Driver-Diagram-v1.2.jpg). NOTE: The driver will be mounted on a thin sheet of silicone thermal pad, so any sharp points under the board will pierce the sheet and short against the projector chassis. For this reason, all wires should be soldered on TOP of the board, rather than through the holes. (Use a soldering iron with a large tip.)
 
+(CHECK H6CC DOCS for current pot default setting: Do we need to turn up current to get max amps?)
+
 1. Cut 2 pieces of red/black power cable: 12cm and 20cm.
 
 1. Solder the 12cm cable to the LED+ and LED- terminals. Attach a terminal block on the other side, marked with polarity.
