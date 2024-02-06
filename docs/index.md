@@ -479,6 +479,40 @@ The LED module needs to be adjusted to produce maximum brightness and even illum
 1. Slide the LED module in the rails to find the "flattest" light with the least "hot spot".
 
 1. Lock the rail adjustment with the thumb-screws.
+
+Calibrate Motor Speed
+-------------
+
+The motor / ESC uses the RC car "servo" protocol to indicate speed (50Hz PWM signal with pulse-width from 1000uS to 2000uS). RC receivers have sloppy timing so all ESCs have a calibration process to adapt their timing to the receiver. In our case we leave the motor / ESC at the default settings and calibrate our speed using code.
+
+NOTE: It's not a good idea to run a projector faster than 24fps. The pulldam cam or claw may be damaged. Do so at your own risk!
+
+1. Start with the projector assembled and tested. (No film threaded)
+
+1. Attach the ESP32 to the computer running the Arduino IDE and open "projector\_code.ino".
+
+1. Set the __debugMotor__ variable to __1__. This will tell the ESP32 to constantly send motor information over the USB serial port.
+
+1. Compile and upload the code. (You may need to turn the projector's power off for this step. The ESP32 will be powered by the USB port instead of the projector's power supply.)
+
+1. In the Arduino Serial Monitor, look for these updates from the projector:
+	- __"FPS Target"__ (The speed that the projector is attempting to reach. Currently this is only accurate at the extremes: -24 & +24 until we implement a PID control loop.)
+	- __"FPS Real Avg"__ (The actual measured FPS)
+	- __"Mot uS"__ (The motor PWM pulse width in microseconds)
+	
+1. Run the projector __backwards__ and turn the speed knob up until FPS Real Avg = 24. Observe Mot uS and write down the value.	
+	
+1. Run the projector __forwards__ and turn the speed knob up until FPS Real Avg = 24. Observe Mot uS and write down the value.
+
+1. In the Arduino code, look for these lines:z
+	- int motMinUS = (insert Mot uS number from __backwards__ 24fps)
+	- int motMaxUS = (insert Mot uS number from __forwards__ 24fps)
+	
+1. Upload the code and test again. Repeat until you get close enough to 24 fps.	
+
+1. Set the __debugMotor__ variable to __0__ and upload the code.
+
+
 	
 Troubleshooting
 ================
