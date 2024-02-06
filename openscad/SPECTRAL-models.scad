@@ -22,13 +22,14 @@ heatsinkZ = 20; // size of LED heatsink
 //eiki_encoder_magnet_mount(); // 2-piece threaded part to attach encoder magnet to drive shaft - PRINT WITH 0.1mm LAYERS 
 //eiki_camtank_cover(); // Cover for hole in camtank after shutter removal - PRINT ROTATED, FLAT SIDE DOWN
 //eiki_LED_mount();
-//eiki_LED_lens_holder(1); // export STL with 0 argument for holder, 1 argument for holder fingers
+//eiki_LED_lens_holder(0); // export STL with 0 argument for holder, 1 argument for holder fingers
+eiki_LEDdriver_tray(); // tray to keep the LED driver in place
 //eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
 //eiki_power_switch_ring(); // adapter ring to mount power switch in hole for threading lamp
 //eiki_terminal_block_mount(); // mount to hold electrical terminal blocks
 //eiki_cable_clip(); // cable clip that mounts on bosses inside projector
 //eiki_cable_clip_mount(); // expanding cleat to insert into large holes inside projector
-eiki_battery_box(); // battery box (with mounting points for voltage protection board and ESP32 PCB slot)
+//eiki_battery_box(); // battery box (with mounting points for voltage protection board and ESP32 PCB slot)
 //translate([160,-64+2.6,0]) rotate([-90,0,0]) eiki_PCB_mount(); 
 //eiki_PCB_mount();
 
@@ -417,7 +418,7 @@ module eiki_control_panel() {
 module eiki_LED_lens_holder(option) {
     cylinderOuterD = 46;
     cylinderOuterZ = 39.6;
-    reflectorD = 42; //39.8
+    reflectorD = 39.8;
     reflectorZ = 34.8;
     lensD = 43.8;
     lensZ = 3.8;
@@ -543,6 +544,28 @@ module heatsink() {
         // grid(gridDimX, gridDimY, gridPitchX, gridPitchY, center)
         translate([0,0,baseZ]) grid(1, bladeNum, 1, (XY-bladeThick)/(bladeNum-1), 0) cube([XY,bladeThick,Z-baseZ]);
     }
+
+// tray to hold LED driver board
+module eiki_LEDdriver_tray(); {
+    // origin is 4mm screw hole
+    trayZ = 3;
+    wallThick = 2;
+    
+    pcbOffset = [0,20,0];
+    pillarOffset = [-17, 42, 0];
+    
+    difference() {
+        hull() {
+            cylinder(d=4+wallThick*2,h=trayZ, $fn=32); // screw hole
+            translate(pcbOffset) cylinder(d=31+wallThick*2,h=trayZ, $fn=64); // PCB hole
+            translate(pillarOffset) cylinder(d=9+wallThick*2,h=trayZ, $fn=32); // hole to wrap around pillar
+        }
+        
+        cylinder(d=4.2,h=trayZ+1, $fn=32); // screw hole
+        translate(pcbOffset) cylinder(d=31,h=trayZ+1, $fn=64); // PCB hole
+        translate(pillarOffset) cylinder(d=9,h=trayZ+1, $fn=32); // hole to wrap around pillar
+    }
+}
 
 module eiki_motormount() {
     // main dims
