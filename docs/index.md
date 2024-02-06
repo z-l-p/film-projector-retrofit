@@ -131,9 +131,9 @@ Li-Ion batteries need protection from:
 
 The projector electronics need protection from:
 
-1. Over-voltage above 13 volts: The motor's ESC expects 9-12.6v and has no over-voltage protection. The LED driver can withstand much higher voltages.
+1. Over-voltage above 13 volts: The motor's ESC expects 9 - 12.6V and has no over-voltage protection. The LED driver can withstand 22V.
 1. Over-current: If the motor stalls or there is an internal short-circuit, the projector electronics could be badly damaged.
-1. Reverse Polarity: If a battery or power supply were connected backwards, it would destroy most of the electronics.
+1. Reverse Polarity: If a battery or power supply were connected backwards, it would destroy the motor's ESC and possibly more. (The LED Driver has reverse polarity protection.)
 
 Most Li-Ion battery packs have protection boards installed, but RC car batteries have none. The ISDT battery charger provides these protections during charging, but no charger should be left unattended (especially overnight). The Hobbywing motor has under-voltage disconnect but no protection against reverse polarity or over-voltage. 
 
@@ -170,7 +170,7 @@ All power wiring should be 18AWG or larger, because there are high currents invo
 	 - Negative: the outer terminal of the DC jack
 	 - (Leave the battery side of the cable un-terminated. You will add an XT60 connector after you prepare the motor. These photos show the future connector already attached.)
 
-1. 3D-Print the battery box (eiki\_battery\_box.stl) and collect the parts shown in the photo (4 section terminal blocks, 2 jumpers, DVB01 power protection board, 20mm x 22cm velcro strap).
+1. 3D-Print the battery box (eiki\_battery\_box.stl) and collect the parts shown in the photo (4-position segments of eurostrip terminal block, 2 jumpers, DVB01 power protection board, 20mm x 22cm velcro strap).
 
 1. The right side of the battery box has a slot to hold the ESP32 PCB. There is a lock for the PCB slot. Assemble it with an M3 x 12mm+ screw and 2 M3 washers. Mount as shown and tighten slightly.
 
@@ -191,25 +191,23 @@ All power wiring should be 18AWG or larger, because there are high currents invo
 	- Terminal block (+) -> DVB01 (V+)
 	- Terminal block (+) -> DVB01 (DC+)
 	
-1. Now program the DVB01 power protection board:
+1. Now program the DVB01 power protection board. Consult the instruction manual ("DVB01 Voltage Relay Module 12V User Manual.pdf") to understand the menu navigation:
 
-	- Consult the instruction manual ("DVB01 Voltage Relay Module (12V )User Manual) to understand the menu navigation.
-
-	-  P-0 (mode) = F-4 (engage relay when voltage is between limits)
+	- P-0 (mode) = F-4 (engage relay when voltage is between limits)
 
 	- P-1 (lower voltage limit) = 9v
 
 	- P-2 (upper voltage limit) = 13v
 
-	- P-3 (voltage correction) These modules are not well calibrated from the factory. If you have an accurate volt meter, adjust the +/- buttons until the module's display matches your meter's measurement of the input voltage.
+	- P-3 (voltage correction) These modules are not well calibrated from the factory. If you have an accurate volt meter, adjust the +/- buttons until the module's flashing display matches your meter's measurement of the input voltage.
 
 	- P-4 (time delay before relay engages) = 0.5
 
 	- P-5 (time delay before relay disengages) = 0
 
-	- If you have a variable power supply, test the module to make sure it works
+	- If you have a variable power supply, test the module to make sure it works. The relay should only pass power if the voltage is between 9v and 13v. Reverse polarity on the input should not harm anything.
 
-	- Turn on "power saving mode": Long press SW1 until display blinks. It will turn off after 10 seconds of inactivity.
+	- After testing, turn on "power saving mode": Long press SW1 until display blinks. It will turn off after 10 seconds of inactivity.
 
 1. Cut a 50cm length of black/red power cable, and a shorter length of red power cable. Connect the power path through the DVB01's relay, as shown in photos.
 	- Terminal block (+) -> DVB01 (NO) on right side of board (use the short red cable)
@@ -217,11 +215,11 @@ All power wiring should be 18AWG or larger, because there are high currents invo
 	- DVB01 (COM) on right side of board -> red wire of 50cm power cable
 	- (You will terminate the 50cm power cable in a later step)
 	
-1. Mount the battery box. Flip it over and orient it so the tabs on the bottom engage with the slots on the projector chassis. There are 2 holes on top for M3 x 5mm screws. (The right hole is hard to reach, but you can detach part of the auto-load mechanism to reach it.) The velcro will hold the battery in the box (max battery size about 155 x 46 x 30 mm).
+1. Mount the battery box: Flip it over and orient it so the tabs on the bottom engage with the slots on the projector chassis. There are 2 holes on top for M3 x 5mm screws. (The right hole is hard to reach, but you can detach part of the auto-load mechanism to reach it.) The velcro strap will hold the battery in the box (max battery size about 155 x 46 x 30 mm).
 
-1. 3D-print the cable clips (eiki\_cable\_clip.stl) and install in the projector chassis with M3 x 5mm screws (PHOTO OF LOCATIONS). You will use these to route the cables along the sides of the projector chassis. The clip in the upper right side also needs a mount (eiki\_cable\_clip\_mount.stl) to attach to the unthreaded hole where it belongs. Use a longer (10mm+) M3 screw for this clip.
+1. 3D-print the cable clips (eiki\_cable\_clip.stl) and install in the projector chassis with M3 x 5mm screws. You will use these to route the cables along the sides of the projector chassis. The clip in the upper right side also needs a mount (eiki\_cable\_clip\_mount.stl) to attach to the unthreaded hole where it belongs. Use a longer (10mm+) M3 screw for this clip.
 
-1. 3D-print the terminal block mount (eiki\_terminal\_block\_mount.stl) and screw it onto the projector chassis using an M3 x 5mm+ screw.
+1. 3D-print the terminal block mount (eiki\_terminal\_block\_mount.stl) and screw it onto the projector chassis using an M3 x 25mm screw. NOTE: You may need to tap this hole to make sure it is fully threaded. The screw should extend through the chassis and emerge on the other side, inside the lamphouse. (We will use this later.)
 
 1. Cut two 6-position segments of eurostrip terminal block. Insert jumpers into the right side of each strip. Use red paint to mark one strip as positive and one as negative. (see later photos)
 
@@ -231,9 +229,9 @@ All power wiring should be 18AWG or larger, because there are high currents invo
 
 ESP32 PCB Mount
 =====================
-The micro-controller wiring comes later, but first we need to 3D-print a mount to hold it. The micro-controller PCB slides into a pair of slots: The left slot is included on the battery box. The right side slot is provided by the part described below.
+The micro-controller wiring comes later, but first we need to 3D-print the slotted mount to support the right side of its PC board. (The left slot is included on the battery box.)
 
-Note: The PCB mounts are designed to fit "Solderable Breadboard" PCBs available online from China (see BOM). They look like the "Half-Sized Perma Proto" from Adafruit (# 1609) which is 8mm shorter. If you are using the Adafruit boards instead, you need to adjust the battery box or pcb mount models in OpenSCAD to accomodate the narrower width.
+Note: The PCB mounts are designed to fit "Solderable Breadboard" PCBs available online from China (see BOM). They look like the "Half-Sized Perma Proto" from Adafruit (# 1609) which is 8mm shorter. If you are using the Adafruit boards instead, you need to extend the battery box model in OpenSCAD: Change variable "mountBaseX" from 150 to 158.
 
 1. 3D-print "eiki\_pcb\_mount.stl".
 
@@ -338,14 +336,100 @@ _(The motor must be mounted first, with the belt properly tensioned)_
 	 - You should see message whenever you turn the inching knob. 
 	 - (CONTINUE WITH FULL CALIBRATION INFO)
 
-LED Driver Mounting and Wiring
+LED Driver Wiring & Mounting
 ================
+The TaskLED H6cc LED driver accepts 8-22V DC and provides a constant-current output up to 6.6A @ 6V to drive the Cree LED. (LEDs require a power source with precise current control. Do not connect the LED to unregulated power, or conventional constant-voltage regulators.)
+
+In our application, we will control the LED brightness via pulse-width modulation PWM, using the dedicated PWM pin on the H6cc. (To reduce PWM flicker, we _could_ control the current instead, using the H6cc POT pin and a digital potentiometer. This would add complexity and would have limited dimming below 20%, but maybe worth trying in the future?)
+
+Driver Wiring
+----------
+See LED Driver Wiring diagram (LED-Driver-Diagram-v1.2.jpg). NOTE: The driver will be mounted on a thin sheet of silicone thermal pad, so any sharp points under the board will pierce the sheet and short against the projector chassis. For this reason, all wires should be soldered on TOP of the board, rather than through the holes. (Use a soldering iron with a large tip.)
+
+1. Cut 2 pieces of red/black power cable: 12cm and 20cm.
+
+1. Solder the 12cm cable to the LED+ and LED- terminals. Attach a terminal block on the other side, marked with polarity.
+
+1. Solder the 20cm cable to the IN+ and IN- terminals. 
+
+The LED driver is designed to turn on whenever power is supplied. During projector startup, the driver will start sooner than the the ESP32, so the lamp will shine at full brightness until the ESP32 asserts control over the PWM pin. This will burn film! So we install a zener regulator and pullup resistor that keeps the PWM pin high (3 V) by default. When the ESP32 boots, it will overcome this resistor and pull PWM low (0 V) whenever it needs to turn on the LED.
+
+1. Solder together the components (3V zener diode, 1k resistor, and 470R resistor) as shown in the wiring diagram.
+
+1. Cover with insulating tape (kapton or PVC), leaving the ends exposed.
+
+1. Prepare a wire for the PWM signal. It should be long enough to reach to the ESP32. (We used a shielded cable to prevent interference, but it's probably not necessary.)
+
+1. Solder the components to the LED driver board (IN+, IN-, and PWM terminals).
+
+1. Solder the PWM cable to the PWM terminal.
+
+1. Cut a square of insulting tape (kapton or PVC) and apply to the grey square inductor on the driver.
+
+Driver Mounting
+----------
+The H6cc is a circular PCB without mounting holes. (It was intended for flashlights where it would be compressed between parts of the aluminum flashlight body.) It should come with double-sided thermal tape (T-Global Li98), but you should not trust the adhesive to make a permanent bond. We will mount it to the projector chassis, so we'll use a combination of a plastic tray and metal clip to keep it in place.
+
+1. 3D-Print the plastic tray (eiki\_LEDdriver\_tray.stl). This will hold the driver board in place laterally.
+
+1. Remove the screw in the lamphouse. This is the back of an axle for a plastic arm on the other side of the projector chassis. Be careful to support the arm and catch the washer and spring that will fall from it when you remove the screw.
+
+1. Install the plastic tray. It should fit over a pillar in the lamphouse. Secure the tray with the screw you removed earlier, and replace the plastic arm (and its washer and spring). Use thread-locker.
+
+1. Cut the thermal tape into a circle to match the driver board. Remove the backing from one side and apply it to the board.
+
+1. Remove the other backing and press the LED driver into the hole in the tray. Check the orientation to make sure it matches the photo.
+
+1. Use stiff steel wire to make a clip. (We used the handle from a "binder clip".) It should be long on one side and folded into a short loop on the other side. See photos for dimensions.
+
+1. Wrap the clip behind the projector chassis so it presses on the square grey inductor. The driver board should now be secure.
+
+1. Mount the terminal block to the exposed threads of the protruding screw. Tighten with an M3 nut. Make sure the empty sides of the terminal block are accessible because you will add the LED cables here.
+
+1. Pull the IN+ and IN- wires through the hole in the chassis and attach to the main terminal blocks. (This photo also shows the small fan wires from the LED module, which you will build next.)
 
 LED Module Assembly
 ================
 
-LED Module Mounting
-================
+The Cree XHP70.3 HI LED needs to be mounted to a fan-cooled heatsink. Never turn it on without the heatsink. It could overheat in seconds! To focus the light on the film frame, we will use a combination of an aluminum reflector and a condenser lens. Everything will be mounted on a sliding rail to permit focusing.
+
+1. Collect the parts: Approx. 25cm of red/black power wire, LED "star" board with plastic spacer ring, LED reflector and lens, 50mm heatsink and fan, 2 M2.5 x 5mm screws, 2 M3 x 8mm+ thumbscrews, 4 self-tapping M2.6 x 8mm screws, 4 M3 x 20mm+ screws, 3D-printed parts. You will need to drill and tap M2.5mm holes in the heatsink and tap the heatsink fins for M3 screws.
+
+1. Solder the 25cm LED wires before you mount the LED on the heatsink. (It's hard to solder these boards because of their thermal mass. The heatsink will make it much worse.) Use a large soldering tip and consider 60/40 lead solder because it melts at a lower temperature than lead-free solder. The soldering pads are very close to the mounting holes, so you should offset your connections to one side to avoid the screw heads. (A short-circuit would be catastrophic.)
+
+1. Your LED mounting holes must fall _between_ the heatsink fins. If you drill a hole that lands partially on a fin you will break your drill bit or tap! Print the paper template ("LED-Heatsink-Drill-Template.pdf"), cut it out, wrap it around the heatsink, and tape the edges down.
+
+1. Use a center-punch to transfer the 2 hole locations onto the heatsink. (PHOTO) Drill 2mm holes and tap them with a 2.5mm tap.
+
+1. Mount soldered LED to heatsink with the M2.5 x 6-8mm screws and nylon washers. Use thread-locker. Use a small amount of high quality thermal compound to promote heat transfer. Be careful to avoid a short-circuit since the LED terminals are so close to the screw heads.
+
+1. Place the 3D-printed lens holder (eiki\_lens\_holder.stl) on the heatsink. Press the 3D-printed clips (eiki\_lens\_holder\_clip.stl) into the sides of the heatsink and attach to lens holder with self-tapping M2.6 x 8mm screws. These clips will keep the lens holder firmly attached to the heatsink. NOTE: Both LED wires should exit from the corner of the lens holder, matching the photos.
+
+1. Add the plastic spacer ring to the top of the LED. This ring will hold the metal reflector in the correct position and prevent it from shorting the LED terminals. 
+
+1. Insert the LED reflector into the lens holder. Push it down until it fully seats against the plastic ring on the LED.
+
+1. Add the lens to the top of the lens holder and secure with a few drops of flexible solvent glue (E6000) around the perimeter.
+
+1. Use an M3 tap to add threads to the 3rd row of slots in the heatsink. (The tap might want to wander around, so try to keep it straight.) Test with the M3 x 8mm thumbscrews.
+
+1. Mount the fan and 3D-printed fan guard (eiki\_fan\_guard.stl) on back of heatsink. The spacing and orientation is important:
+	- Hold heatsink with fins vertically, thumbscrew threads on left
+	- Mount fan so it blows toward the heatsink, with cable exiting on your right
+	- Fan will be offset to the right because there are an odd number of heatsink slots.
+	- Use 4 M3 x 20+ mm screws to attach fan guard and fan. (They will cut their own threads between the heatsink fins. Don't over-tighten or you will strip the soft aluminum.)
+	
+1. Remove the original halogen lamp from the projector to reveal the metal mount.
+
+1. Screw the 3D-printed rails for the LED assembly (eiki\_LED\_mount.stl) onto the metal mount. Use M3 x 5-8mm low profile button head screws. Add thread-locker.
+
+1. Attach the LED module to the rails, using the M3 thumbscrews and washers. Tighten the screws gently so the LED module can slide along the rails. (Later you will focus LED and tighten the thumbscrews fully.)
+
+1. Attach the LED wires to the terminal block near the LED driver.
+
+1. Mount the finished assembly in the projector and secure with the original Eiki nut.
+
+1. Pull the fan wires through the hole in the chassis near the LED driver. Attach them to the main terminal blocks near the motor. (See the photo from the LED Driver Mounting section.)
 
 ESP32 Wiring
 ================
@@ -353,9 +437,47 @@ ESP32 Wiring
 ESP32 Mounting
 ================
 
-Make the Rear Door Slimmer
+(Optional) Battery Meter
+================
+The ESP32 could monitor battery voltage and alert the user, but it would require a voltage divider and more pins for the ADC input and a visual indicator of some sort. Pre-made battery monitors are cheap and easy, so let's use one!
+
+(INSERT STEPS) for configuring module, mounting in 3D-printed housing, wiring into main power block.
+
+(Optional) Make the Rear Door Slimmer
 ================
 Insert Loic and the hacksaw!
 
-Hand Crank Option
+
+Calibration
 ================
+
+Synchronize the Shutter
+-------------
+
+Before projecting film, the digital shutter needs to be calibrated to match the film movement.
+
+1. Start with the projector assembled, tested, and threaded with film.
+
+1. Set the shutter blades to 1 and the shutter angle to 180d. Se the lamp to a low brightness to avoid film burns. As you move the projector mechanism, you should see one LED blink per frame, but the timing will be wrong.
+
+1. Hold the shutter pulley and use pliers to rotate the magnet mount until the LED is ON when the film is still, and OFF during pulldown movement.
+
+1. Switch to 2 shutter blades (mainting the 180d angle) and repeat the calibration.
+
+1. Switch to 3 shutter blades (mainting the 180d angle) and repeat. With these settings, it should be difficult to make the LED pulses match the film movement. A moment of pulldown might be illuminated, but in practice you can just use a narrower shutter angle to eliminate it.
+
+
+Focus the LED
+-------------
+
+The LED module needs to be adjusted to produce maximum brightness and even illumination. Do these steps in a projection environment, but without threading film.
+
+1. In the lamphouse, adjust Eiki original nut to center the LED "hot spot" in the horizontal dimension. 
+ 
+1. Slide the LED module in the rails to find the "flattest" light with the least "hot spot".
+
+1. Lock the rail adjustment with the thumb-screws.
+	
+Troubleshooting
+================
+- The shutter shaft pulley needs thread-locker, or it will come loose. This would be bad because the lamp would stay on and burn the film!
