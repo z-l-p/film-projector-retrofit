@@ -468,6 +468,15 @@ Before projecting film, the digital shutter needs to be synchronized to match th
 
 1. Switch to 3 shutter blades (180d shutter angle) and repeat. With these settings, it should be difficult to match the LED pulses to the film movement without illuminating a bit of pulldown. In practice you can just use a narrower shutter angle to eliminate it.
 
+Info for the curious: The LED will be ON during these encoder counts (@ 180d shutter angle)
+
+- 1-blade shutter: 50 - 99
+
+- 2-blade shutter: 25 - 50, 75 - 99
+
+- 3-blade shutter: 18 - 32, 51 - 65, 85 - 99
+
+
 
 Focus the LED
 -------------
@@ -496,7 +505,7 @@ NOTE: It's not a good idea to run a projector faster than 24fps. The pulldam cam
 1. Compile and upload the code. (You may need to turn the projector's power off for this step. The ESP32 will be powered by the USB port instead of the projector's power supply.)
 
 1. In the Arduino Serial Monitor, look for these updates from the projector:
-	- __"FPS Target"__ (The speed that the projector is attempting to reach. Currently this is only accurate at the extremes: -24 & +24 until we implement a PID control loop.)
+	- __"FPS Target"__ (The speed that the projector is attempting to reach. Currently this is only accurate at -24 & +24 until we implement a PID control loop.)
 	- __"FPS Real Avg"__ (The actual measured FPS)
 	- __"Mot uS"__ (The motor PWM pulse width in microseconds)
 	
@@ -504,9 +513,9 @@ NOTE: It's not a good idea to run a projector faster than 24fps. The pulldam cam
 	
 1. Run the projector __forwards__ and turn the speed knob up until FPS Real Avg = 24. Observe Mot uS and write down the value.
 
-1. In the Arduino code, look for these lines:z
-	- int motMinUS = (insert Mot uS number from __backwards__ 24fps)
-	- int motMaxUS = (insert Mot uS number from __forwards__ 24fps)
+1. In the Arduino code, look for these lines:
+	- __int motMinUS__ = (insert Mot uS number from __backwards__ 24fps)
+	- __int motMaxUS__ = (insert Mot uS number from __forwards__ 24fps)
 	
 1. Upload the code and test again. Repeat until you get close enough to 24 fps.	
 
