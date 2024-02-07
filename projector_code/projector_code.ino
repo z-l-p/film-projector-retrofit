@@ -11,10 +11,7 @@
 // Future option exists for current-controlled dimming (set LedDimMode=0): Perhaps a log taper digipot controlled via SPI? Probably can't dim below 20% though.
 
 // TODO Urgent:
-// every time FPStarget = 0 and shutter is open, we should advance projector to blanking point so shutter is "closed"
-// add single-frame capability to button callback functions
-// February 2023 Eiki UI will have settings for "safe" mode where lamp brightness is linked to speed and shutter angle to prevent film burns. This will change UI input logic.
-// Test each part of modular UI
+// add something to button callback functions (single-frame in stop mode? lamp mute in run mode?)
 // add RGB LED feedback for different functions (maybe different color for each speed?)
 
 // TODO Nice but not essential:
@@ -95,10 +92,10 @@ SimpleKalmanFilter shutBladesPotKalman(kalmanMEA, kalmanMEA, kalmanQ);
 SimpleKalmanFilter shutAnglePotKalman(kalmanMEA, kalmanMEA, kalmanQ);
 #endif
 
-SimpleKalmanFilter FPSrealAvg(1.5, 1.5, 0.01); // for smoothing the FPSreal calculation (uses custom parameters)
+SimpleKalmanFilter FPSrealAvgFilter(1.5, 1.5, 0.01); // for smoothing the FPSreal calculation (uses custom parameters)
 
 #if (enableButtons)
-// Bounce2 Library setup for single frame buttons
+// Bounce2 Library setup for buttons
 Button2 buttonA;
 Button2 buttonB;
 #endif
@@ -153,11 +150,16 @@ int safeMode = 0;                // 0 = normal, 1 = ledBright is limited by spee
 int LedDimMode = 1;              // 0 = current-controlled dimming (NOT YET IMPLEMENTED!), 1 = PWM dimming
 int LedInvert = 1;               // set to 1 to invert LED output signal so it's active-low (required by H6cc driver board)
 int ledBright = 0;               // current brightness of LED (range depends on Res below. If we're ramping then this will differ from pot value)
+float safeSpeedMult;             // multiplier to use in "safe mode" to lower lamp brightness at low FPS
+float safeAngleMult;             // multiplier to use in "safe mode" to lower lamp brightness at long shutter speeds
+float safeMult;                  // combined multiplier to use in "safe mode" to lower lamp brightness
+const float safeMin = 0.2;       // The minimum brightness in safe mode when running very slowly / stopped
 const int ledBrightRes = 12;     // bits of resolution for LED dimming
 const int ledBrightFreq = 1000;  // PWM frequency (500Hz is published max for H6cc LED driver, 770Hz is closer to shutter segment period, 1000 seems to work best)
 const int ledChannel = 0;        // ESP32 LEDC channel number. Pairs share settings (0/1, 2/3, 4/5...) so skip one to insure your settings work!
 
 // MOTOR VARS We are using ESP32 LEDC to drive the RC motor ESC via 1000-2000uS PWM @50Hz (standard servo format)
+int motSwitch = 0;                        // position of the (optional) motor switch (-1, 0, 1)
 int motSpeedUS = 0;                       // speed of motor (in pulsewidth uS from 1000-2000)
 const int motPWMRes = 16;                 // bits of resolution for extra control (standard servo lib uses 10bit)
 const int motPWMFreq = 50;                // PWM frequency (50Hz is standard for RC servo / ESC)
@@ -189,7 +191,7 @@ int as5047MagOK_old = 0;
 volatile long frame = 0;     // current frame number (frame counter)
 long frameOld = 0;           // old frame number
 volatile float FPSreal = 0;  // measured FPS
-float FPSsafe = 0; // non-volatile measured FPS
+float FPSrealAvg = 0; // non-volatile measured FPS after averaging for jitter reduction
 float FPStarget = 0;         // requested FPS
 
 // Settings for HobbyWing Quicrun Fusion SE motor
@@ -336,7 +338,7 @@ void loop() {
 
   // These happen once per encoder count
   if (countOld != count) {
-    FPSsafe = FPSrealAvg.updateEstimate(FPSreal);; // copy volatile global from ISR and smooth it so it's safe for other routines
+    FPSrealAvg = FPSrealAvgFilter.updateEstimate(FPSreal);; // copy volatile global from ISR and smooth it so it's safe for other routines
     if (debugEncoder) {
       Serial.print("Count: ");
       Serial.print(count);
@@ -354,7 +356,7 @@ void loop() {
       Serial.print("FRAME: ");
       Serial.print(frame);
       Serial.print(" (");
-      Serial.print(FPSsafe);
+      Serial.print(FPSrealAvg);
       Serial.println(" real fps avg)");
     }
     frameOld = frame;
@@ -555,11 +557,12 @@ void readUI() {
   } else {
     shutBladesVal = 3;
   }
-  shutAngleVal = mapf(shutAnglePotVal, 0, 4095, 0.1, 1.0);  // map ADC input to range of shutter angle
+  shutAngleVal = mapf(shutAnglePotVal, 0, 4090, 0.1, 1.0);  // map ADC input to range of shutter angle
+  shutAngleVal = constrain(shutAngleVal, 0.1, 1.0); // clip values
 #endif
 
 #if (enableSafeSwitch)
-  safeMode = !digitalRead(safeSwitch);  // active low so we invert it
+  safeMode = digitalRead(safeSwitch);
 #endif
 
   if (debugUI) {
@@ -593,7 +596,7 @@ void readUI() {
     Serial.print(shutAnglePotVal);
 #endif
 #if (enableSafeSwitch)
-    Serial.print(", Safe Switch: ");
+    Serial.print(", Safe Mode: ");
     Serial.print(safeMode);
 #endif
     Serial.println("");
@@ -623,8 +626,21 @@ void updateLed() {
     ledPotValOld = ledPotVal;
   }
 
-  ledBright = ledAvg.getValue();  // set brightness to slewed version of pot value
-  //ledBright = 2000;
+ledBright = ledAvg.getValue();  // set brightness to slewed version of pot value
+
+  // SAFE MODE CHECK
+  if (safeMode) {
+    safeSpeedMult = fscale(0.0, 24.0, safeMin, 1.0, FPSrealAvg, 0); // safety multiplier for FPS (with optional nonlinear scaling)
+    safeAngleMult = fscale(0.0, 0.5, 2.0, 1.0, shutAngleVal, 0); // boost brightness if less than 180d (with optional nonlinear scaling)
+    safeMult = safeSpeedMult * safeAngleMult;
+    safeMult = constrain(safeMult, 0.0, 1.0); // clip values
+    ledBright = ledBright * safeMult; // decrease brightness to prevent film burns
+
+  // STOPPED IN SAFE MODE
+    if (enableMotSwitch && motSwitch == 0 && FPSrealAvg == 0) {
+      ledBright = 0;
+    }
+  }
   interrupts();
 
   if (debugLed) {
@@ -632,6 +648,12 @@ void updateLed() {
     Serial.print(ledSlewVal);
     Serial.print(", LED Pot: ");
     Serial.print(ledPotVal);
+    Serial.print(", Spd Mult: ");
+    Serial.print(safeSpeedMult);
+    Serial.print(", Shut Mult: ");
+    Serial.print(safeAngleMult);
+    Serial.print(", Safe Mult: ");
+    Serial.print(safeMult);
     Serial.print(", LED Bright: ");
     Serial.print(ledBright);
     Serial.print(", Shutter Blades: ");
@@ -650,14 +672,22 @@ void updateMotor() {
   // Depending on the motor direction switch, we translate the pot ADC to FPS with optional negative scaling
   // (The Ramp library is currently set up for ints, so our float FPS is multiplied by 100 to make it int 2400)
 
+  // If digital shutter is enabled but no encoder movement recently, assume that we're stopped.
+  if (countPeriod > 8000 && enableShutter) {
+    FPSrealAvg = 0;
+  }
+
   if (enableMotSwitch) {
     // Motor UI is switch + pot, so use normal 0-24fps pot scaling
     if (!digitalRead(motDirFwdSwitch)) {
       motPotFPS = mapf(motPotVal, 0, 4095, 20, 2400);  // convert mot pot value to FPS x 100
+      motSwitch = 1;
     } else if (!digitalRead(motDirBckSwitch)) {
       motPotFPS = mapf(motPotVal, 0, 4095, -20, -2400);  // convert mot pot value to FPS x 100
+      motSwitch = -1;
     } else {
       motPotFPS = 0;
+      motSwitch = 0;
     }
   } else {
     // Motor UI is only pot, so use Use FORWARD-STOP-BACK pot scaling with deadband in center
@@ -706,7 +736,7 @@ void updateMotor() {
     Serial.print(", FPS Target: ");
     Serial.print(FPStarget);
     Serial.print(", FPS Real Avg: ");
-    Serial.print(FPSsafe);
+    Serial.print(FPSrealAvg);
     Serial.print(", Mot uS: ");
     Serial.print(motSpeedUS);
     Serial.print(", Mot PWM Duty: ");
