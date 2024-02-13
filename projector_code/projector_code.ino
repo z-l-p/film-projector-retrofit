@@ -11,6 +11,7 @@
 // Future option exists for current-controlled dimming (set LedDimMode=0): Perhaps a log taper digipot controlled via SPI? Probably can't dim below 20% though.
 
 // TODO Urgent:
+// add button C to code (pin 27)
 // add something to button callback functions (single-frame in stop mode? lamp mute in run mode?)
 // add RGB LED feedback for different functions (maybe different color for each speed?)
 
@@ -25,7 +26,6 @@
 #include <AS5X47.h>         // https://github.com/adrien-legrand/AS5X47
 #include <elapsedMillis.h>  // https://github.com/pfeerick/elapsedMillis
 #include <Ramp.h>           // https://github.com/siteswapjuggler/RAMP
-//#include <ResponsiveAnalogRead.h>  // https://github.com/dxinteractive/ResponsiveAnalogRead
 #include <SimpleKalmanFilter.h>  // https://github.com/denyssene/SimpleKalmanFilter
 #include <Button2.h>             // https://github.com/LennartHennigs/Button2
 #include <Adafruit_NeoPixel.h>   // https://github.com/adafruit/Adafruit_NeoPixel
@@ -34,10 +34,10 @@
 int debugEncoder = 0;  // serial messages for encoder count and shutterMap value
 int debugUI = 0;       // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0;   // serial messages for frame count and FPS
-int debugMotor = 1;    // serial messages for motor info
-int debugLed = 0;      // serial messages for LED info
+int debugMotor = 0;    // serial messages for motor info
+int debugLed = 0;      // serial messages for LED info (LED pot val, safe multiplier, computed brightness, shutter blades and angle)
 
-// Basic setup options (enable the options based on your hardware choices)
+// BASIC SETUP OPTIONS (enable the options based on your hardware choices)
 #define enableShutter 1      // 0 = LED stays on all the time (in case physical shutter is installed), 1 = use encoder to blink LED for digital shutter
 #define enableShutterPots 1  // 0 = use hard-coded shutterBlades and shutterAngle variables, 1 = use pots to control these functions
 #define enableSlewPots 1     // 0 = use hard-coded ledSlewMin and motSlewMin variables, 1 = use pots to control these functions
@@ -54,11 +54,11 @@ int debugLed = 0;      // serial messages for LED info
 #define ledSlewPotPin 34     // analog input for LED dimming slew rate pot
 #define shutBladesPotPin 39  // analog input for # of shutter blades pot
 #define shutAnglePotPin 36   // analog input for shutter angle pot
-#define motDirFwdSwitch 27   // digital input for motor direction switch (forward)
-#define motDirBckSwitch 14   // digital input for motor direction switch (backward)
-#define buttonApin 26        // digital input for single frame forward button
-#define buttonBpin 25        // digital input for single frame backward button
-#define safeSwitch 12        // switch to enable "safe mode" where lamp brightness is automatically dimmed at slow speeds
+#define motDirFwdSwitch 14   // digital input for motor direction switch (forward)
+#define motDirBckSwitch 12   // digital input for motor direction switch (backward)
+#define buttonApin 25        // digital input for button
+#define buttonBpin 26        // digital input for button
+#define safeSwitch 13        // switch to enable "safe mode" where lamp brightness is automatically dimmed at slow speeds
 
 
 // Encoder
