@@ -1,4 +1,7 @@
 # film-projector-retrofit
+
+![image info](docs/images/Projector-Inside-600.jpg)
+
 An attempt to modernize a 16mm film projector with DC motor and LED lamp, controlled by ESP32 micro-controller. This project is part of SPECTRAL Wandering Sounds and Images Seminar https://www.mire-exp.org/evenement/spectral-wandering-sound-and-images/
 
 This info is a work-in-progress, and designed to work with specific hardware. It won't be stable until February 2024 when it will appear on this wiki: https://www.filmlabs.org/wiki/en/meetings_projects/spectral/mire-wandering/wandering-16mmprojection/start

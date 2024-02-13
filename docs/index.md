@@ -1,6 +1,8 @@
 SPECTRAL Projector Conversion Guide
 ===================================
 
+![image info](images/Projector-Inside-600.jpg)
+
 *Work In Progress! Composed in markdown format for github, to be adapted to filmlabs.org wiki*
 
 Repository: [https://github.com/z-l-p/film-projector-retrofit](https://github.com/z-l-p/film-projector-retrofit)
@@ -436,14 +438,57 @@ The Cree XHP70.3 HI LED needs to be mounted to a fan-cooled heatsink. Never turn
 ESP32 Wiring
 ================
 
+Add steps here...
+
+Do jumpers first because they are hard to solder when the headers are inserted.
+
+Use a breadboard to hold the pins in place during soldering
+
+Diode is polarized, resistor is not
+
+After testing all functions, remember to add hot glue or solvent glue on headers to insulate and reinforce them
+
 ESP32 Mounting
 ================
+
+ESP32 Programming
+================
+
+1. Set up the build environment. This tutorial explains how to download and install the Arduino IDE and add ESP32 support via the Board Manager.  https://randomnerdtutorials.com/installing-esp32-arduino-ide-2-0/
+
+1. Download projector\_code.ino from this project and open it in the Arduino IDE.
+
+1. Add the required libraries using the Arduino Library Manager:
+
+	- AS5X47	https://github.com/adrien-legrand/AS5X47
+
+	- elapsedMillis	https://github.com/pfeerick/elapsedMillis
+
+	- Ramp	https://github.com/siteswapjuggler/RAMP
+
+	- SimpleKalmanFilter	https://github.com/denyssene/SimpleKalmanFilter
+
+	- Button2	https://github.com/LennartHennigs/Button2
+
+	- Adafruit\_NeoPixel	https://github.com/adafruit/Adafruit_NeoPixel
+	
+1. In the "Basic Setup Options" section of the code, enable/disable software features to match your projector.
+
+1. Connect the ESP32 to the computer via USB, select the serial port, and click the Download button. (Turn off the projector's main power switch first, or the code won't download.)
+
+1. Turn on the projector and test the basic functions, then do the calibration steps listed later.
+
+
+
+(Optional) Optical Sound
+================
+INSERT STEPS for LED exciter lamp and photodiode amplifier. Remember to put flywheel back!
 
 (Optional) Battery Meter
 ================
 The ESP32 could monitor battery voltage and alert the user, but it would require a voltage divider and more pins for the ADC input and a visual indicator of some sort. Pre-made battery monitors are cheap and easy, so let's use one!
 
-(INSERT STEPS) for configuring module, mounting in 3D-printed housing, wiring into main power block.
+INSERT STEPS for configuring module, mounting in 3D-printed housing, wiring into main power block.
 
 (Optional) Make the Rear Door Slimmer
 ================
