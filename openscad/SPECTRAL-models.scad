@@ -23,7 +23,7 @@ heatsinkZ = 20; // size of LED heatsink
 //eiki_camtank_cover(); // Cover for hole in camtank after shutter removal - PRINT ROTATED, FLAT SIDE DOWN
 //eiki_LED_mount();
 //eiki_LED_lens_holder(0); // export STL with 0 argument for holder, 1 argument for holder fingers
-eiki_LEDdriver_tray(); // tray to keep the LED driver in place
+//eiki_LEDdriver_tray(); // tray to keep the LED driver in place
 //eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
 //eiki_power_switch_ring(); // adapter ring to mount power switch in hole for threading lamp
 //eiki_terminal_block_mount(); // mount to hold electrical terminal blocks
@@ -491,6 +491,7 @@ module holder_clip() {
     }
 }
 
+// rails with slots for LED module slide into focus. Attaches to existing Eiki lampholder mount.
 module eiki_LED_mount() {
     mountZ = 4; // "floor" thickness
     sideThick = 4; // side rail thickness
@@ -546,9 +547,9 @@ module heatsink() {
     }
 
 // tray to hold LED driver board
-module eiki_LEDdriver_tray(); {
+module eiki_LEDdriver_tray() {
     // origin is 4mm screw hole
-    trayZ = 3;
+    trayZ =3;
     wallThick = 2;
     
     pcbOffset = [0,20,0];
