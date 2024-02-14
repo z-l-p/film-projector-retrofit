@@ -1,6 +1,7 @@
 # film-projector-retrofit
 
-![image info](docs/images/Projector-Inside-600.jpg)
+![Projector](docs/images/Projector-Outside-600.jpg)
+![Projector internals](docs/images/Projector-Inside-600.jpg)
 
 An attempt to modernize a 16mm film projector with DC motor and LED lamp, controlled by ESP32 micro-controller. This project is part of SPECTRAL Wandering Sounds and Images Seminar https://www.mire-exp.org/evenement/spectral-wandering-sound-and-images/
 

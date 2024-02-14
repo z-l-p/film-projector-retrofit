@@ -1,7 +1,8 @@
 SPECTRAL Projector Conversion Guide
 ===================================
 
-![image info](images/Projector-Inside-600.jpg)
+![Projector](images/Projector-Outside-600.jpg)
+![Projector internals](images/Projector-Inside-600.jpg)
 
 *Work In Progress! Composed in markdown format for github, to be adapted to filmlabs.org wiki*
 
@@ -316,7 +317,7 @@ The sensor comes on an adapter board (AS5047D-TS\_EK\_AB) that needs preparation
 
 1. Use a small wire to bridge the R2 pads.  
 
-1. Solder 9 wires (on the back of the board) for micro-controller connections. (See AS5047D-TS\_EK\_AB datasheet for full pinout info because the PCB markings are confusing):
+1. Solder 9 wires (on the back of the board) for micro-controller connections. (See Encoder-Wiring-Chart.png):
 	- Top row: 3V3, CSn, CLK, MOSI, MISO, GND  
 	- Bottom row: B, A, I/PWM
 
