@@ -31,7 +31,7 @@
 #include <Adafruit_NeoPixel.h>   // https://github.com/adafruit/Adafruit_NeoPixel
 
 // Debug Levels (Warning: debug messages might cause loss of shutter sync. Turn off if not needed.)
-int debugEncoder = 0;  // serial messages for encoder count and shutterMap value
+int debugEncoder = 1;  // serial messages for encoder count and shutterMap value
 int debugUI = 0;       // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0;   // serial messages for frame count and FPS
 int debugMotor = 0;    // serial messages for motor info
@@ -39,25 +39,25 @@ int debugLed = 0;      // serial messages for LED info (LED pot val, safe multip
 
 // BASIC SETUP OPTIONS (enable the options based on your hardware choices)
 #define enableShutter 1      // 0 = LED stays on all the time (in case physical shutter is installed), 1 = use encoder to blink LED for digital shutter
-#define enableShutterPots 1  // 0 = use hard-coded shutterBlades and shutterAngle variables, 1 = use pots to control these functions
-#define enableSlewPots 1     // 0 = use hard-coded ledSlewMin and motSlewMin variables, 1 = use pots to control these functions
-#define enableMotSwitch 1    // 0 = single pot for motor direction/speed (center = STOP), 1 = use switch for FWD-STOP-BACK & pot for speed
-#define enableSafeSwitch 1   // 0 = use hard-coded safeMode variable to limit LED brightness, 1 = use switch to enable/disable safe mode
-#define enableButtons 1      // 1 = use buttons A and B (for single frame FORWARD / BACK)
-#define enableStatusLed 1    // 1 = use NeoPixel status LED(s) for user feedback
+#define enableShutterPots 0  // 0 = use hard-coded shutterBlades and shutterAngle variables, 1 = use pots to control these functions
+#define enableSlewPots 0     // 0 = use hard-coded ledSlewMin and motSlewMin variables, 1 = use pots to control these functions
+#define enableMotSwitch 0    // 0 = single pot for motor direction/speed (center = STOP), 1 = use switch for FWD-STOP-BACK & pot for speed
+#define enableSafeSwitch 0   // 0 = use hard-coded safeMode variable to limit LED brightness, 1 = use switch to enable/disable safe mode
+#define enableButtons 0      // 1 = use buttons A and B (for single frame FORWARD / BACK)
+#define enableStatusLed 0    // 1 = use NeoPixel status LED(s) for user feedback
 
 // INPUT PINS //
 // UI
-#define motPotPin 33         // analog input for motor speed pot
+#define motPotPin 36         // (new = 33) analog input for motor speed pot
 #define motSlewPotPin 32     // analog input for motor slew rate pot
-#define ledPotPin 35         // analog input for LED dimming pot
+#define ledPotPin 34         // (new = 35) analog input for LED dimming pot
 #define ledSlewPotPin 34     // analog input for LED dimming slew rate pot
 #define shutBladesPotPin 39  // analog input for # of shutter blades pot
 #define shutAnglePotPin 36   // analog input for shutter angle pot
-#define motDirFwdSwitch 14   // digital input for motor direction switch (forward)
-#define motDirBckSwitch 12   // digital input for motor direction switch (backward)
-#define buttonApin 25        // digital input for button
-#define buttonBpin 26        // digital input for button
+#define motDirFwdSwitch 25   // (new = 14) digital input for motor direction switch (forward)
+#define motDirBckSwitch 26   // (new = 12) digital input for motor direction switch (backward)
+#define buttonApin 27        // (new = 25) digital input for button
+#define buttonBpin 14        // (new = 26) digital input for button
 #define safeSwitch 13        // switch to enable "safe mode" where lamp brightness is automatically dimmed at slow speeds
 
 
