@@ -5,7 +5,7 @@
 #define enableShutter 1      // 0 = LED stays on all the time (in case physical shutter is installed), 1 = use encoder to blink LED for digital shutter
 #define enableShutterPots 1  // 0 = use hard-coded shutterBlades and shutterAngle variables, 1 = use pots to control these functions
 #define enableSlewPots 1     // 0 = use hard-coded ledSlewMin and motSlewMin variables, 1 = use pots to control these functions
-#define motorSpeedMode 1          // 0 = motor speed is controlled by hard-coded motMinUS & motMaxUS variables, 1 = controlled by closed loop feedback
+#define motorSpeedMode 0          // 0 = motor speed is controlled by hard-coded motMinUS & motMaxUS variables, 1 = controlled by closed loop feedback
 #define enableMotSwitch 1    // 0 = single pot for motor direction/speed (center = STOP), 1 = use switch for FWD-STOP-BACK & pot for speed
 #define motSwitchMode 1       // if enableMotSwitch = 1, how is motor direction controlled? 
                               // 0 = (P26) Use motDirBckSwitch for FWD/REV & motDirFwdSwitch for RUN/STOP
@@ -35,7 +35,8 @@ const float safeMin = 0.2;       // The minimum brightness in safe mode when run
 int shutterBlades = 2;     // How many shutter blades: (minimum = 1 so lower values will be constrained to 1)
 float shutterAngle = 0.5;  // float shutter angle per blade: 0= LED always off, 1= LED always on, 0.5 = 180d shutter angle
 
-int motMinUS = 1800;                      // motor pulse length at -24fps (set this by testing)
-int motMaxUS = 1200;                      // motor pulse length at +24fps (set this by testing)
+int motMinUS = 1779;                      // motor pulse length at -24fps (set this by testing)
+int motMaxUS = 1228;                      // motor pulse length at +24fps (set this by testing)
+int minUSoffset = 80;          // used to enforce a minumum speed when running. Otherwise low motor speed = stopped
 
-int singleFPS = 2;        // what speed to use for film movement in single frame mode
+int singleFPS = 6;        // what speed to use for film movement in single frame mode

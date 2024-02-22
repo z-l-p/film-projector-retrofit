@@ -36,11 +36,11 @@
 //#include "spectral_p26.h" // "Store projector-specific settings here"
 
 // Debug messages. Use only one. (Warning: debug messages might cause loss of shutter sync. Turn off if not needed.)
-int debugEncoder = 1;  // serial messages for encoder count and shutterMap value
+int debugEncoder = 0;  // serial messages for encoder count and shutterMap value
 int debugUI = 0;       // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0;   // serial messages for frame count and FPS
 int debugFPSgraph = 0; // serial messages for only FPSrealAvg (for Arduino IDE serial plotter)
-int debugMotor = 0;    // serial messages for motor info
+int debugMotor = 1;    // serial messages for motor info
 int debugLed = 0;      // serial messages for LED info (LED pot val, safe multiplier, computed brightness, shutter blades and angle)
 
 // Encoder
@@ -256,7 +256,7 @@ void setup() {
 
 #if (enableStatusLed)
   pixels.begin();                // INITIALIZE NeoPixel object
-  updateStatusLED(0, 32, 0, 0);  // start with LED red while booting
+  updateStatusLED(0, 30, 0, 0);  // start with LED red while booting
 #endif
 
   //delay(100);
@@ -264,7 +264,7 @@ void setup() {
   Serial.println("SPECTRAL Projector Controller");
   Serial.println("-----------------------------");
 
-// Program the ESC settings if user holds down both buttons during startup
+// Program the ESC settings if user holds down buttonA during startup
 #if (enableButtons)
   if (digitalRead(buttonApin) == 0) {
     ESCprogram();
@@ -315,7 +315,7 @@ void setup() {
   Serial.println("Done");
 
 #if (enableStatusLed)
-  updateStatusLED(0, 0, 32, 0);  // green LED
+  updateStatusLED(0, 18, 16, 10);  // white LED at idle
 #endif
 
 // initialize all FPS readings to 0:
@@ -336,18 +336,18 @@ void loop() {
   //myPID.Compute();
 
  //update these functions @ 200 Hz
-  if (timerFPS >= 5) {
-    calcFPS();
-    updateMotor();
-    timerFPS = 0;
-  }
+   if (timerFPS >= 5) {
+      calcFPS();
+      updateMotor();
+     timerFPS = 0;
+   }
 
   // update these functions @ 50 Hz
   if (timerUI >= 20) {
     as5047MagCheck();  // check for encoder magnet proximity
     readUI();
     updateLed();
-    
+
     
     timerUI = 0;
   }
@@ -462,7 +462,7 @@ void IRAM_ATTR send_LEDC() {
 
   if (LedDimMode) {  // PWM mode
     if (shutterState == 1 || enableShutter == 0) {
-      // LED ON for this step of shutter OR shutter is disabled so LED is always on
+      // LED ON for this step of shutter OR shutter is disabled OR single framing, so LED is always on
       ledcSetup(ledChannel, ledBrightFreq, ledBrightRes);  // configure LED PWM function using LEDC channel
       ledcAttachPin(ledPin, ledChannel);                   // attach the LEDC channel to the GPIO to be controlled
       if (LedInvert) {
@@ -665,7 +665,14 @@ void calcFPS() {
   if (countPeriod > 200000 && enableShutter) {
     FPSrealAvg = 0;
   }
-  //interrupts();
+  float FPSunsigned = abs(FPSrealAvg);
+  if (FPSunsigned > 23.5 && FPSunsigned < 24.5) {
+    updateStatusLED(0, 0, 30, 0);  // green LED at 24fps
+  } else if (FPSunsigned > 17.5 && FPSunsigned < 18.5) {
+    updateStatusLED(0, 20, 0, 16);  // purple LED at 18fps
+  } else {
+    updateStatusLED(0, 18, 16, 10);  // white LED at idle
+  }
 }
 
 // compute LED brightness (note that the ISR ultimately controls the LED state if enableShutter = 1)
@@ -699,8 +706,8 @@ ledBright = constrain(ledBright, 0, 4095);
 
   // SAFE MODE CHECK
   if (safeMode == 1) {
-    if (motSingle == -1 || motSingle == 1) {
-      ledBright = safeMin;
+    if (motSingle != 0) {
+      ledBright = ledBright * safeMin;
     } else {
       safeSpeedMult = fscale(4, 24.0, safeMin, 1.0, abs(FPSrealAvg), 0); // safety multiplier for FPS (with optional nonlinear scaling)
       safeSpeedMult = constrain(safeSpeedMult, safeMin, 1.0); // clip values
@@ -708,13 +715,14 @@ ledBright = constrain(ledBright, 0, 4095);
     }
   }
 
-  // STOPPED CHECK (If projector is stopped, turn off lamp)
-  if (motSingle == 0) {
-    if (FPSrealAvg == 0) {
+  // STOPPED CHECK (Turn off lamp if projector is stopped, except when single buttons are pressed)
+    if (FPSrealAvg == 0 && !buttonAstate && !buttonBstate) {
       ledBright = 0;
       //Serial.print("STOP CHECK ");
     }
-  }
+
+    
+
   
   //interrupts();
 
@@ -831,50 +839,50 @@ motPotClipped = constrain(motPotClipped, 0, 4095);
   /////////////////////
 
   // Check if we're in single frame mode and assert control over things
-  if (motMode == 0) { // we're in stop mode
+  //if (motMode == 0) { // we're in stop mode
     if (motSingle == 1) { // single frame in progress
     // SINGLE FRAME FORWARD
       if (motSingle != motSinglePrev) {
         //Serial.println("FIRST"); // first instance of the loop during a single frame move
         frameOldsingle = frame; // log the current frame when we began the single frame move
         motSinglePrev = motSingle;
-        updateShutterMap(1, 0.7); // force manual shuttermap for single framing
+        updateShutterMap(1, 1.0); // force manual shuttermap for single framing
        }
-      if (frameOldsingle != frame && count >70) {
+      if (frameOldsingle != frame && count >50) {
         // we're ready to show frame
         FPStarget = 0; // stop
-        motSingle = 0; // turn off single flag
-        motSinglePrev = motSingle;
-        updateShutterMap(shutBladesVal, shutAngleVal); // return to normal
+        //motSingle = 0; // turn off single flag
+        //motSinglePrev = motSingle;
+        //updateShutterMap(shutBladesVal, shutAngleVal); // return to normal
       } else {
         // travel to the next frame
-        FPStarget = singleFPS * -1; // jam in preset speed
+        FPStarget = singleFPS * 1; // jam in preset speed
       }
     } else if (motSingle == -1) {
       // SINGLE FRAME BACKWARD
-      if (motSingle != motSinglePrev && count < 90) {
+      if (motSingle != motSinglePrev && count < 70) {
         //Serial.println("FIRST"); // first instance of the loop during a single frame move
         frameOldsingle = frame; // log the current frame when we began the single frame move
         motSinglePrev = motSingle;
-        updateShutterMap(1, 0.7); // force manual shuttermap for single framing
+        updateShutterMap(1, 1.0); // force manual shuttermap for single framing
        }
       if (frameOldsingle != frame) {
         // we're ready to show frame
         FPStarget = 0; // stop
-        motSingle = 0; // turn off single flag
-        motSinglePrev = motSingle;
-        updateShutterMap(shutBladesVal, shutAngleVal); // return to normal
+        //motSingle = 0; // turn off single flag
+        //motSinglePrev = motSingle;
+        //updateShutterMap(shutBladesVal, shutAngleVal); // return to normal
       } else {
         // travel to the next frame
         FPStarget = singleFPS * -1; // jam in preset speed
       }
     }
     
-  }
+  //}
 
   // Transform FPStarget into motor microseconds using choice of 2 methods
   #if motorSpeedMode
-    // USE PID STYLE CLOSED LOOP
+    // USE CLOSED LOOP motor control with feedback from encoder
     float FPSdiff = abs(FPStarget - FPSrealAvg);
     if (FPStarget > 6) {
       if (FPSdiff < 2) FPSdiff = FPSdiff * 0.2; // make changes much smaller when close to setpoint, but only at higher speeds so we can get started from stopped condition
@@ -891,13 +899,27 @@ motPotClipped = constrain(motPotClipped, 0, 4095);
     motSpeedUS = constrain(motSpeedUS, 1200, 1800); // prevent runaway in case of broken belt or other disaster
   #else
     // USE HARD-CODED SPEED
-    motSpeedUS = mapf(FPStarget, -24.0, 24.0, motMinUS, motMaxUS);  // manually convert FPS to motor pulse width in uS
+    float TESTmotSpeedUS;
+    
+    if (FPStarget == 0) {
+      TESTmotSpeedUS = 1500;
+    } else if (FPStarget > 0) {
+      TESTmotSpeedUS = mapf(FPStarget, 0, 24, 1500 - minUSoffset, motMaxUS);
+    } else if (FPStarget < 0) {
+      TESTmotSpeedUS = mapf(FPStarget, 0, -24, 1500 + minUSoffset, motMinUS);
+    }
+    motSpeedUS = TESTmotSpeedUS;
+    //motSpeedUS = mapf(FPStarget, -24.0, 24.0, motMinUS, motMaxUS);  // manually convert FPS to motor pulse width in uS
   #endif
 
   int motDuty = (1 << motPWMRes) * motSpeedUS / motPWMPeriod;     // convert pulse width to PWM duty cycle (duty = # of values at current res * US / pulse period)
   ledcWrite(motPWMChannel, motDuty);                              // update motor speed
   if (debugMotor) {
-    Serial.print("Mot Slew: ");
+    Serial.print("Mot Mode: ");
+    Serial.print(motMode);
+    Serial.print(", Single Mode: ");
+    Serial.print(motSingle);
+    Serial.print(", Mot Slew: ");
     Serial.print(motSlewVal);
     Serial.print(", FPS Target: ");
     Serial.print(FPStarget);
@@ -939,18 +961,22 @@ void pressed(Button2& btn) {
 void released(Button2& btn) {
   if (btn == buttonA) {
     if (buttonAstate == 1) {
+      updateShutterMap(shutBladesVal, shutAngleVal); // return shutter map to normal
       if (debugUI) {
         Serial.println("Button A released");
       }
-      //motSingle = 1;
+      motSingle = 0; // turn off single flag
+      motSinglePrev = motSingle;
       buttonAstate = 0;
     }
   } else if (btn == buttonB) {
     if (buttonBstate == 1) {
+      updateShutterMap(shutBladesVal, shutAngleVal); // return shutter map to normal
       if (debugUI) {
         Serial.println("Button B released");
       }
-      //motSingle = -1;
+      motSingle = 0; // turn off single flag
+      motSinglePrev = motSingle;
       buttonBstate = 0;
     }
   }

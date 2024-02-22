@@ -36,4 +36,6 @@ float shutterAngle = 0.4;  // float shutter angle per blade: 0= LED always off, 
 
 int motMinUS = 1787;                      // motor pulse length at -24fps (set this by testing)
 int motMaxUS = 1210;                      // motor pulse length at +24fps (set this by testing)
-int singleFPS = 3;        // what speed to use for film movement in single frame mode
+int minUSoffset = 100;          // used to enforce a minumum speed when running. Otherwise low motor speed = stopped
+
+int singleFPS = 6;        // what speed to use for film movement in single frame mode
