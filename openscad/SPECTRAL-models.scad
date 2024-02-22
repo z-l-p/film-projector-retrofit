@@ -38,6 +38,7 @@ heatsinkZ = 20; // size of LED heatsink
 
 //p26_encoder_magnet_mount(); // 1-piece threaded part to attach encoder magnet to drive shaft
 //p26_encoder_mount(); // mount to attach encoder bracket to P26 chassis
+P26_esp_mount();
 
 
 ////////////// THE MODULES ////////////////
@@ -767,6 +768,35 @@ module p26_encoder_magnet_mount() {
         translate([0,0,shaftZ]) cylinder(d=magnetD, h=magnetZ, $fn=48); // inner for shaft
         translate([0,0,screwOffsetZ]) rotate([90,0,0]) cylinder(d=screwD, h=10, $fn=32);
         
+    }
+}
+
+// temporary set of standoffs for mounting ESP board to P26 projector
+module P26_esp_mount() {
+    span = 73.6;
+    height = 20;
+    width = 16;
+    
+    P26_esp_standoff();
+    translate([span,0,0]) P26_esp_standoff();
+    difference() {
+        hull() {
+            cylinder(d=width, h=2, $fn=48); // lower 
+            translate([span,0,0]) cylinder(d=width, h=2, $fn=48); // lower
+        }
+    translate([span/2,0,0]) cylinder(d=3, h=10, $fn=24);
+}
+    
+    module P26_esp_standoff() {
+        difference(){
+            union() {
+                cylinder(d=7, h=height, $fn=48); // outer
+                translate([0,0,2]) cylinder(d1=width, d2 = 7, h=height/2-2, $fn=48); // lower flange
+                cylinder(d=width, h=2, $fn=48); // lower flange
+            }
+            translate([0,0,height-9]) cylinder(d=3, h=10, $fn=48); // cut hole a little small so M3 can cut its own threads
+            
+        }
     }
 }
 
