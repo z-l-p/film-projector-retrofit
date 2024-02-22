@@ -29,19 +29,40 @@
 #include <SimpleKalmanFilter.h>  // https://github.com/denyssene/SimpleKalmanFilter
 #include <Button2.h>             // https://github.com/LennartHennigs/Button2
 #include <Adafruit_NeoPixel.h>   // https://github.com/adafruit/Adafruit_NeoPixel
-#include <PID_v1.h>         // https://www.arduino.cc/reference/en/libraries/pid/
 
-// Uncomment ONE of these to load preset configurations from the matching files
-#include "spectral_eiki.h" // "Store projector-specific settings here"
-//#include "spectral_p26.h" // "Store projector-specific settings here"
-
-// Debug messages. Use only one. (Warning: debug messages might cause loss of shutter sync. Turn off if not needed.)
+// Debug Levels (Warning: debug messages might cause loss of shutter sync. Turn off if not needed.)
 int debugEncoder = 1;  // serial messages for encoder count and shutterMap value
 int debugUI = 0;       // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0;   // serial messages for frame count and FPS
-int debugFPSgraph = 0; // serial messages for only FPSrealAvg (for Arduino IDE serial plotter)
 int debugMotor = 0;    // serial messages for motor info
 int debugLed = 0;      // serial messages for LED info (LED pot val, safe multiplier, computed brightness, shutter blades and angle)
+
+// BASIC SETUP OPTIONS (enable the options based on your hardware choices)
+#define enableShutter 1      // 0 = LED stays on all the time (in case physical shutter is installed), 1 = use encoder to blink LED for digital shutter
+#define enableShutterPots 0  // 0 = use hard-coded shutterBlades and shutterAngle variables, 1 = use pots to control these functions
+#define enableSlewPots 0     // 0 = use hard-coded ledSlewMin and motSlewMin variables, 1 = use pots to control these functions
+#define enableMotSwitch 0    // 0 = single pot for motor direction/speed (center = STOP), 1 = use switch for FWD-STOP-BACK & pot for speed
+#define motSwitchMode 0       // if enableMotSwitch = 1, how is motor direction controlled? 
+                              // 0 = Use motDirBckSwitch for FWD/REV & motDirFwdSwitch for RUN/STOP
+                              // 1 = Use motDirFwdSwitch for RUN FWD, motDirBckSwitch for RUN REV, else STOP
+#define enableSafeSwitch 0   // 0 = use hard-coded safeMode variable to limit LED brightness, 1 = use switch to enable/disable safe mode
+#define enableButtons 0      // 1 = use buttons A and B (for single frame FORWARD / BACK)
+#define enableStatusLed 0    // 1 = use NeoPixel status LED(s) for user feedback
+
+// INPUT PINS //
+// UI
+#define motPotPin 36         // (new = 33) analog input for motor speed pot
+#define motSlewPotPin 32     // analog input for motor slew rate pot
+#define ledPotPin 34         // (new = 35) analog input for LED dimming pot
+#define ledSlewPotPin 34     // analog input for LED dimming slew rate pot
+#define shutBladesPotPin 39  // analog input for # of shutter blades pot
+#define shutAnglePotPin 36   // analog input for shutter angle pot
+#define motDirFwdSwitch 25   // (new = 14) digital input for motor direction switch (forward)
+#define motDirBckSwitch 26   // (new = 12) digital input for motor direction switch (backward)
+#define buttonApin 27        // (new = 25) digital input for button
+#define buttonBpin 14        // (new = 26) digital input for button
+#define safeSwitch 13        // switch to enable "safe mode" where lamp brightness is automatically dimmed at slow speeds
+
 
 // Encoder
 #define EncI 17   // encoder pulse Index (AS5047 sensor)
@@ -74,20 +95,12 @@ SimpleKalmanFilter shutBladesPotKalman(kalmanMEA, kalmanMEA, kalmanQ);
 SimpleKalmanFilter shutAnglePotKalman(kalmanMEA, kalmanMEA, kalmanQ);
 #endif
 
-// For the FPSreal averaging
-const int FPSnumReadings = 3;      // how many FPS readings to average together
-float FPSAvgArray[FPSnumReadings];  // the FPS readings array
-int FPSAvgReadIndex = 0;            // the index of the current reading
-float FPSAvgTotal = 0;              // total of all readings
-
+SimpleKalmanFilter FPSrealAvgFilter(1.5, 1.5, 0.01); // for smoothing the FPSreal calculation (uses custom parameters)
 
 #if (enableButtons)
 // Bounce2 Library setup for buttons
 Button2 buttonA;
 Button2 buttonB;
-
-bool buttonAstate = 0;
-bool buttonBstate = 0;
 #endif
 
 int ledSlewVal = 0;
@@ -132,28 +145,32 @@ int motPotFPS = 0;  // current requested FPS based on motPotVal and scaling
 int motPotFPSOld = 0;
 int ledPotVal = 0;  // current value of LED pot (not necessarily the current LED brightness since we might be fading or strobing)
 int ledPotValOld;
+int shutterBlades = 3;     // How many shutter blades: (minimum = 1 so lower values will be constrained to 1)
+float shutterAngle = 0.5;  // float shutter angle per blade: 0= LED always off, 1= LED always on, 0.5 = 180d shutter angle
 
 // LED VARS //
+int safeMode = 0;                // 0 = normal, 1 = ledBright is limited by speed and shutter angle to prevent film burns (NOT YET IMPLEMENTED!)
 int LedDimMode = 1;              // 0 = current-controlled dimming (NOT YET IMPLEMENTED!), 1 = PWM dimming
 int LedInvert = 1;               // set to 1 to invert LED output signal so it's active-low (required by H6cc driver board)
 int ledBright = 0;               // current brightness of LED (range depends on Res below. If we're ramping then this will differ from pot value)
 float safeSpeedMult;             // multiplier to use in "safe mode" to lower lamp brightness at low FPS
+float safeAngleMult;             // multiplier to use in "safe mode" to lower lamp brightness at long shutter speeds
+float safeMult;                  // combined multiplier to use in "safe mode" to lower lamp brightness
+const float safeMin = 0.2;       // The minimum brightness in safe mode when running very slowly / stopped
 const int ledBrightRes = 12;     // bits of resolution for LED dimming
 const int ledBrightFreq = 1000;  // PWM frequency (500Hz is published max for H6cc LED driver, 770Hz is closer to shutter segment period, 1000 seems to work best)
 const int ledChannel = 0;        // ESP32 LEDC channel number. Pairs share settings (0/1, 2/3, 4/5...) so skip one to insure your settings work!
 
 // MOTOR VARS We are using ESP32 LEDC to drive the RC motor ESC via 1000-2000uS PWM @50Hz (standard servo format)
-int motMode = 0;                        // motor run mode (-1, 0, 1)
-int motModePrev = 0;                     // previous motor run mode (-1, 0, 1)
-int motSingle = 0;                       // indicates that we're traveling in single frame mode
-int motSinglePrev = 0;                    // were we in single frame mode during the last loop?
-int motSingleMinTime = 500;                // the minimum movement time (MS) for each single frame move
-volatile int motModeReal = 0;                         // Current running direction detected by encoder (-1, 1)
-double motSpeedUS = 1500;                       // speed of motor (in pulsewidth uS from 1000-2000)
+int motMode = 0;                        // position of the (optional) motor switch (-1, 0, 1)
+int motSpeedUS = 0;                       // speed of motor (in pulsewidth uS from 1000-2000)
 const int motPWMRes = 16;                 // bits of resolution for extra control (standard servo lib uses 10bit)
 const int motPWMFreq = 50;                // PWM frequency (50Hz is standard for RC servo / ESC)
 int motPWMPeriod = 1000000 / motPWMFreq;  // microseconds per pulse
 const int motPWMChannel = 2;              // ESP32 LEDC channel number. Pairs share settings (0/1, 2/3, 4/5...) so skip one to insure your settings work!
+int motMinUS = 1777;                      // motor pulse length at -24fps (set this by testing)
+int motMaxUS = 1229;                      // motor pulse length at +24fps (set this by testing)
+
 
 // prototypes for ISR functions that will be defined in later code 
 // (prototype must be declared _before_ we attach interrupt because ESP32 requires "IRAM_ATTR" flag which breaks typical Arduino behavior)
@@ -175,19 +192,10 @@ int as5047MagOK_old = 0;
 
 // Machine Status Variables
 volatile long frame = 0;     // current frame number (frame counter)
-long frameOld = 0;           // old frame number for encoder
-long frameOldsingle = 0;           // old frame number for encoder
-volatile float FPScount = 0;  // measured FPS, sourced from encoder counts (100 updates per frame)
-volatile float FPSframe = 0;  // measured FPS, sourced from frame counts
-double FPSreal = 0; // non-volatile FPS, sourced from encoder counts at slow speeds and frame counts at high speeds
-double FPSrealAvg = 0; // non-volatile measured FPS after averaging for jitter reduction (double because PID lib requires it)
-double FPStarget = 0;         // requested FPS (double because PID lib requires it)
-
-// For PID motor speed control
-//Specify the links and initial tuning parameters
-//double Kp=1, Ki=0, Kd=0;
-//double PIDval = 0;
-//PID myPID(&FPSrealAvg, &PIDval, &FPStarget, Kp, Ki, Kd, DIRECT); // in, out, setpoint, Kp, Ki, Kd, mode (DIRECT or REVERSE)
+long frameOld = 0;           // old frame number
+volatile float FPSreal = 0;  // measured FPS
+float FPSrealAvg = 0; // non-volatile measured FPS after averaging for jitter reduction
+float FPStarget = 0;         // requested FPS
 
 // Settings for HobbyWing Quicrun Fusion SE motor
 #define ESC_WRITE_BIT_TIME_WIDTH 2500  // uSec length of each pulse ("2500" = 400 baud)
@@ -205,11 +213,9 @@ char ESC_settings[] = {
 };
 
 // timers
-elapsedMicros framePeriod;  // US since last frame transition (used for FPS calc)
-elapsedMicros countPeriod;  // US since last encoder count transition (used for FPS calc)
+//elapsedMicros framePeriod;  // microseconds since last frame transition (used for FPS calc)
+elapsedMicros countPeriod;  // microseconds since last encoder count transition (used for FPS calc)
 elapsedMillis timerUI;      // MS since last time we checked/updated the user interface
-elapsedMillis timerFPS;      // MS since last time we checked/updated the user interface
-elapsedMillis timerSingle;  // MS since single frame move began
 
 /////////////////////////
 //// ---> SETUP <--- ////
@@ -217,9 +223,6 @@ elapsedMillis timerSingle;  // MS since single frame move began
 
 void setup() {
   Serial.begin(115200);  // Setup Serial Monitor
-
-  //myPID.SetMode(AUTOMATIC);
-  //myPID.SetOutputLimits(double(motMinUS), double(motMaxUS));
 
   pinMode(ledPin, OUTPUT);  // LEDC setup will take care of this later, but force it now just in case we're using current-controlled dimming
   digitalWrite(ledPin, 1);  // turn off LED during startup to prevent film burns
@@ -232,15 +235,12 @@ void setup() {
   // Attach buttons (Bounce2 library handles pinmode settings for us)
   buttonA.begin(buttonApin, INPUT_PULLUP, true);
   buttonA.setDebounceTime(5);
-  buttonA.setPressedHandler(pressed);
-  buttonA.setReleasedHandler(released);
+  buttonA.setTapHandler(buttonTap);
 
   buttonB.begin(buttonBpin, INPUT_PULLUP, true);
   buttonB.setDebounceTime(5);
-  buttonB.setPressedHandler(pressed);
-  buttonB.setReleasedHandler(released);
+  buttonB.setTapHandler(buttonTap);
 #endif
-
   if (enableSafeSwitch) {
     pinMode(safeSwitch, INPUT_PULLUP);
   }
@@ -266,7 +266,7 @@ void setup() {
 
 // Program the ESC settings if user holds down both buttons during startup
 #if (enableButtons)
-  if (digitalRead(buttonApin) == 0) {
+  if (digitalRead(buttonApin) == 0 && digitalRead(buttonBpin) == 0) {
     ESCprogram();
     while (1)
       ;  // don't continue setup since the ESC needs to be rebooted before we can continue
@@ -318,51 +318,33 @@ void setup() {
   updateStatusLED(0, 0, 32, 0);  // green LED
 #endif
 
-// initialize all FPS readings to 0:
-  for (int thisReading = 0; thisReading < FPSnumReadings; thisReading++) {
-    FPSAvgArray[thisReading] = 0;
-  }
-
   fixCount();                                     // at startup we don't know the absolute position via ABI, so ask SPI
   updateShutterMap(shutterBlades, shutterAngle);  //generate initial shutter map ... (1, 0.05 = 1 PPF and narrowest shutter angle)
 }
 
-/////////////////////////////////////////////
-//// ---> THE LOOP (runs on core 1) <--- ////
-/////////////////////////////////////////////
+////////////////////////
+//// ---> LOOP <--- ////
+////////////////////////
 
 void loop() {
   
-  //myPID.Compute();
-
- //update these functions @ 200 Hz
-  if (timerFPS >= 5) {
-    calcFPS();
-    updateMotor();
-    timerFPS = 0;
-  }
 
   // update these functions @ 50 Hz
   if (timerUI >= 20) {
     as5047MagCheck();  // check for encoder magnet proximity
     readUI();
     updateLed();
-    
-    
+    updateMotor();
+
     timerUI = 0;
   }
 
-  // These happen once per encoder count (only useful for debugging at slow speeds)
+  // These happen once per encoder count
   if (countOld != count) {
+    FPSrealAvg = FPSrealAvgFilter.updateEstimate(FPSreal);; // copy volatile global from ISR and smooth it so it's safe for other routines
     if (debugEncoder) {
-      Serial.print("Frame: ");
-      Serial.print(frame);
-      Serial.print(", Frame Old: ");
-      Serial.print(frameOldsingle);
-      Serial.print(", Count: ");
+      Serial.print("Count: ");
       Serial.print(count);
-      Serial.print(", Single: ");
-      Serial.print(motSingle);
       Serial.print(", Lamp: ");
       Serial.print(shutterMap[count]);
       Serial.print(", Brightness: ");
@@ -376,10 +358,9 @@ void loop() {
     if (debugFrames) {
       Serial.print("FRAME: ");
       Serial.print(frame);
-      Serial.print(", FPSreal:");
-      Serial.print(FPSreal);
-      Serial.print(", FPS avg:");
-      Serial.println(FPSrealAvg);
+      Serial.print(" (");
+      Serial.print(FPSrealAvg);
+      Serial.println(" real fps avg)");
     }
     frameOld = frame;
   }
@@ -399,45 +380,34 @@ void IRAM_ATTR pinChangeISR() {
   byte criterion = abNew ^ abOld;
   // Execute if this is a valid transition on A or B
   if (criterion == 1 || criterion == 2) {
-    //FPSreal = 10000.0 / countPeriod;  // update FPS calc based on period between the 100 encoder counts (not signed)
-    //countPeriod = 0;
-
+    FPSreal = 10000.0 / countPeriod;  // update FPS calc based on period between the 100 encoder counts
+    countPeriod = 0;
     // There are 3 A or B transitions during each Index pulse. (We count them here, then take action in a child loop.)
     if (digitalRead(EncI)) {
       EncIndexCount++;
     } else {
       EncIndexCount = 0;
     }
-    // moving forwards ...
+    // moving forwards
     if (upMask & (1 << (2 * abOld + abNew / 2))) {
-      // at index
       if (EncIndexCount == 2) {  // reset counter on 'middle" transition during index condition
         count = 0;
         frame++;
-        FPSframe = 1000000.0 / framePeriod;  // update FPS calc based on period between each frame
-        framePeriod = 0;
+        //FPSreal = 1000000.0 / framePeriod;  // update FPS calc
+        //framePeriod = 0;
       } else {
-        // normal forwards count
-        FPScount = 10000.0 / countPeriod;  // update FPS calc based on period between the 100 encoder counts
-        countPeriod = 0;
-        motModeReal = 1; // mark that we're running forwards
+        count++;
       }
-      count++;
     } else {
-      // moving backwards ...
+      // moving backwards
       if (EncIndexCount == 2) {  // reset counter on 'middle" transition during index condition
-        // at index
         count = 0;
         frame--;
-        FPSframe = 1000000.0 / framePeriod;  // update FPS calc based on period between each frame
-        framePeriod = 0;
+        //FPSreal = 1000000.0 / framePeriod;  // update FPS calc
+        //framePeriod = 0;
       } else {
-        // normal backwards count
-        FPScount = 10000.0 / countPeriod;  // update FPS calc based on period between the 100 encoder counts
-        countPeriod = 0;
-        motModeReal = -1; // mark that we're running backwards
+        count--;
       }
-      count--;
       // wrap around the circle instead of using negative steps
       if (count < 0) {
         count = countsPerRev - 1;
@@ -448,7 +418,7 @@ void IRAM_ATTR pinChangeISR() {
 
   // Update LED status for this encoder step
 
-  bool shutterState = shutterMap[count];  // copy shutter state to local variable in case it changes during the ISR execution (not possible?)
+  bool shutterState = shutterMap[count];  // copy shutter state to local variable in case it changes during the ISR execution
   if (shutterState != shutterStateOld) {  // only update LED if shutter state changes (not every step)
     send_LEDC();                          // actual update code is abstracted so it can be run in different contexts
   }
@@ -458,7 +428,7 @@ void IRAM_ATTR pinChangeISR() {
 
 // send info to the LEDC peripheral to update LED PWM (abstracted here because it's called from loop or ISR)
 void IRAM_ATTR send_LEDC() {
-  bool shutterState = shutterMap[count];  // copy shutter state to local variable in case it changes during the ISR execution (not possible?)
+  bool shutterState = shutterMap[count];  // copy shutter state to local variable in case it changes during the ISR execution
 
   if (LedDimMode) {  // PWM mode
     if (shutterState == 1 || enableShutter == 0) {
@@ -496,6 +466,7 @@ void IRAM_ATTR send_LEDC() {
     }
   }
 }
+
 
 
 // check for encoder magnet proximity
@@ -537,7 +508,6 @@ void fixCount() {
 
 // fill shutterMap array with boolean values to control LED state at each position of shutter rotation
 void updateShutterMap(byte shutterBlades, float shutterAngle) {
-  //Serial.print("Update ShutterMap");
   // shutterBlades: number of virtual shutter blades (must be > 0)
   // shutterAngle: ratio between on/off for each shutter blade segment (0.5 = 180d)
   if (shutterBlades < 1) shutterBlades = 1;          // it would break if set to 0
@@ -558,46 +528,45 @@ void updateShutterMap(byte shutterBlades, float shutterAngle) {
 // NOTE incurs 12ms blocking delay to help calm down crappy ADC between readings.
 void readUI() {
 
-  #if (enableButtons)
-    buttonA.loop();  // update button managed by Bounce2 library
-    buttonB.loop();  // update button managed by Bounce2 library
-  #endif
+#if (enableButtons)
+  buttonA.loop();  // update button managed by Bounce2 library
+  buttonB.loop();  // update button managed by Bounce2 library
+#endif
 
   // update each pot using Kalman filter to reduce horrible terrible awful ADC noise
 
   motPotVal = motPotKalman.updateEstimate(analogRead(motPotPin));
-  
   delay(2);
   ledPotVal = ledPotKalman.updateEstimate(analogRead(ledPotPin));
   delay(2);
 
-  #if (enableSlewPots)
-    motSlewVal = motSlewPotKalman.updateEstimate(analogRead(motSlewPotPin));
-    delay(2);
-    ledSlewVal = ledSlewPotKalman.updateEstimate(analogRead(ledSlewPotPin));
-    delay(2);
-  #endif
+#if (enableSlewPots)
+  motSlewVal = motSlewPotKalman.updateEstimate(analogRead(motSlewPotPin));
+  delay(2);
+  ledSlewVal = ledSlewPotKalman.updateEstimate(analogRead(ledSlewPotPin));
+  delay(2);
+#endif
 
-  #if (enableShutterPots && enableShutter)
-    shutBladesPotVal = shutBladesPotKalman.updateEstimate(analogRead(shutBladesPotPin));
-    delay(2);
-    shutAnglePotVal = shutAnglePotKalman.updateEstimate(analogRead(shutAnglePotPin));
-    delay(2);
-    // using custom scaling for shutBladesPotVal to make control feel right
-    if (shutBladesPotVal < 800) {
-      shutBladesVal = 1;
-    } else if (shutBladesPotVal < 2500) {
-      shutBladesVal = 2;
-    } else {
-      shutBladesVal = 3;
-    }
-    shutAngleVal = mapf(shutAnglePotVal, 0, 4090, 0.1, 1.0);  // map ADC input to range of shutter angle
-    shutAngleVal = constrain(shutAngleVal, 0.1, 1.0); // clip values
-  #endif
+#if (enableShutterPots && enableShutter)
+  shutBladesPotVal = shutBladesPotKalman.updateEstimate(analogRead(shutBladesPotPin));
+  delay(2);
+  shutAnglePotVal = shutAnglePotKalman.updateEstimate(analogRead(shutAnglePotPin));
+  delay(2);
+  // using custom scaling for shutBladesPotVal to make control feel right
+  if (shutBladesPotVal < 800) {
+    shutBladesVal = 1;
+  } else if (shutBladesPotVal < 2500) {
+    shutBladesVal = 2;
+  } else {
+    shutBladesVal = 3;
+  }
+  shutAngleVal = mapf(shutAnglePotVal, 0, 4090, 0.1, 1.0);  // map ADC input to range of shutter angle
+  shutAngleVal = constrain(shutAngleVal, 0.1, 1.0); // clip values
+#endif
 
-  #if (enableSafeSwitch)
-    safeMode = digitalRead(safeSwitch);
-  #endif
+#if (enableSafeSwitch)
+  safeMode = digitalRead(safeSwitch);
+#endif
 
   if (debugUI) {
     if (enableMotSwitch) {
@@ -613,72 +582,39 @@ void readUI() {
     }
     Serial.print("Mot Speed: ");
     Serial.print(motPotVal);
-  #if (enableSlewPots)
-      Serial.print(", Mot Slew: ");
-      Serial.print(motSlewVal);
-  #endif
-      Serial.print(", Lamp Bright: ");
-      Serial.print(ledPotVal);
-  #if (enableSlewPots)
-      Serial.print(", Lamp Slew: ");
-      Serial.print(ledSlewVal);
-  #endif
-  #if (enableShutterPots)
-      Serial.print(", Shut Blade: ");
-      Serial.print(shutBladesPotVal);
-      Serial.print(", Shut Angle: ");
-      Serial.print(shutAnglePotVal);
-  #endif
-  #if (enableSafeSwitch)
-      Serial.print(", Safe Mode: ");
-      Serial.print(safeMode);
-  #endif
-      Serial.println("");
-    }
+#if (enableSlewPots)
+    Serial.print(", Mot Slew: ");
+    Serial.print(motSlewVal);
+#endif
+    Serial.print(", Lamp Bright: ");
+    Serial.print(ledPotVal);
+#if (enableSlewPots)
+    Serial.print(", Lamp Slew: ");
+    Serial.print(ledSlewVal);
+#endif
+#if (enableShutterPots)
+    Serial.print(", Shut Blade: ");
+    Serial.print(shutBladesPotVal);
+    Serial.print(", Shut Angle: ");
+    Serial.print(shutAnglePotVal);
+#endif
+#if (enableSafeSwitch)
+    Serial.print(", Safe Mode: ");
+    Serial.print(safeMode);
+#endif
+    Serial.println("");
+  }
 }
 
-// compute the real FPS, based on encoder rotation, but averaged to reduce error
-void calcFPS() {
-  noInterrupts();
-  float myFPScount = FPScount; // copy volatile FPS to nonvolatile variable so it's safe
-  float myFPSframe = FPSframe; // copy volatile FPS to nonvolatile variable so it's safe
-  int myMotModeReal = motModeReal; // copy volatile FPS to nonvolatile variable so it's safe
-  interrupts();
-
-  if (myFPScount > 5) {
-    FPSreal = myFPSframe;
-  } else {
-    FPSreal = myFPScount;
-  }
-
-  FPSAvgTotal = FPSAvgTotal - FPSAvgArray[FPSAvgReadIndex];   // subtract the last reading
-  FPSAvgArray[FPSAvgReadIndex] = FPSreal;    // store the new reading
-  FPSAvgTotal = FPSAvgTotal + FPSAvgArray[FPSAvgReadIndex]; // add the reading to the total
-  FPSAvgReadIndex = FPSAvgReadIndex + 1;   // advance to the next position in the array
-  if (FPSAvgReadIndex >= FPSnumReadings) { // if we're at the end of the array...
-    FPSAvgReadIndex = 0; // ...wrap around to the beginning:
-  }
-  FPSrealAvg = FPSAvgTotal / FPSnumReadings; // calculate the average
-  FPSrealAvg = FPSrealAvg * myMotModeReal; // add sign based on film travel direction
-
-    // If digital shutter is enabled but no encoder movement in last 200 msec, assume that we're stopped.
-  if (countPeriod > 200000 && enableShutter) {
-    FPSrealAvg = 0;
-  }
-  //interrupts();
-}
 
 // compute LED brightness (note that the ISR ultimately controls the LED state if enableShutter = 1)
 void updateLed() {
-  //noInterrupts();
+  noInterrupts();
 
-  if (abs(shutBladesVal != shutBladesValOld) || abs(shutAngleVal - shutAngleValOld) >= 0.05) {
-    if (enableShutter == 1) {
-      //Serial.println("(SHUTTERMAP SHUTTER POTS)");
+  if (shutBladesVal != shutBladesValOld || shutAngleVal != shutAngleValOld) {
+    if (enableShutter) {
       updateShutterMap(shutBladesVal, shutAngleVal);
     }
-    shutBladesValOld = shutBladesVal;
-    shutAngleValOld = shutAngleVal;
   }
 
 #if (enableSlewPots)
@@ -687,36 +623,28 @@ void updateLed() {
   ledAvg.update();  // LED slewing managed by Ramp library
   // if knobs have changed sufficiently, calculate new slewing ramp time
   if (abs(ledSlewVal - ledSlewValOld) >= 50 || abs(ledPotVal - ledPotValOld) >= 50) {
-    //Serial.println("(LED UPDATE SLEW)");
+    //Serial.println("(SHUTTERMAP CALC)");
     ledAvg.go(ledPotVal, ledSlewVal);  // set next ramp interpolation in ms
     ledSlewValOld = ledSlewVal;
     ledPotValOld = ledPotVal;
   }
 
-// set brightness to slewed version of pot value (mapped/clipped because kalman filter sometimes doesn't allow us to reach min/max)
-ledBright = map(ledAvg.getValue(), 40, 4045, 0, 4095);  
-ledBright = constrain(ledBright, 0, 4095); 
+ledBright = ledAvg.getValue();  // set brightness to slewed version of pot value
 
   // SAFE MODE CHECK
-  if (safeMode == 1) {
-    if (motSingle == -1 || motSingle == 1) {
-      ledBright = safeMin;
-    } else {
-      safeSpeedMult = fscale(4, 24.0, safeMin, 1.0, abs(FPSrealAvg), 0); // safety multiplier for FPS (with optional nonlinear scaling)
-      safeSpeedMult = constrain(safeSpeedMult, safeMin, 1.0); // clip values
-      ledBright = ledBright * safeSpeedMult; // decrease brightness to prevent film burns
-    }
-  }
+  if (safeMode) {
+    safeSpeedMult = fscale(0.0, 24.0, safeMin, 1.0, FPSrealAvg, 0); // safety multiplier for FPS (with optional nonlinear scaling)
+    safeAngleMult = fscale(0.0, 0.5, 2.0, 1.0, shutAngleVal, 0); // boost brightness if less than 180d (with optional nonlinear scaling)
+    safeMult = safeSpeedMult * safeAngleMult;
+    safeMult = constrain(safeMult, 0.0, 1.0); // clip values
+    ledBright = ledBright * safeMult; // decrease brightness to prevent film burns
 
-  // STOPPED CHECK (If projector is stopped, turn off lamp)
-  if (motSingle == 0) {
-    if (FPSrealAvg == 0) {
+  // STOPPED IN SAFE MODE
+    if (enableMotSwitch && motMode == 0 && FPSrealAvg == 0) {
       ledBright = 0;
-      //Serial.print("STOP CHECK ");
     }
   }
-  
-  //interrupts();
+  interrupts();
 
   if (debugLed) {
     Serial.print("LED Slew: ");
@@ -725,6 +653,10 @@ ledBright = constrain(ledBright, 0, 4095);
     Serial.print(ledPotVal);
     Serial.print(", Spd Mult: ");
     Serial.print(safeSpeedMult);
+    Serial.print(", Shut Mult: ");
+    Serial.print(safeAngleMult);
+    Serial.print(", Safe Mult: ");
+    Serial.print(safeMult);
     Serial.print(", LED Bright: ");
     Serial.print(ledBright);
     Serial.print(", Shutter Blades: ");
@@ -733,73 +665,47 @@ ledBright = constrain(ledBright, 0, 4095);
     Serial.println(shutAngleVal);
   }
   // at slow speeds OR if the shutter is fully open OR shutter disabled, update the LED PWM directly because ISR isn't firing unless in motion
-  if (countPeriod > 50000 || shutAngleVal == 1.0 || !enableShutter) {
+  if (countPeriod > 5000 || shutAngleVal == 1.0 || !enableShutter) {
     send_LEDC();
   }
 }
 
 void updateMotor() {
 
-// mapped/clip motPotVal because kalman filter sometimes doesn't allow us to reach min/max)
-int motPotClipped = map(motPotVal, 40, 4045, 0, 4095);
-motPotClipped = constrain(motPotClipped, 0, 4095); 
-
   // Depending on the motor direction switch, we translate the pot ADC to FPS with optional negative scaling
   // (The Ramp library is currently set up for ints, so our float FPS is multiplied by 100 to make it int 2400)
 
+  // If digital shutter is enabled but no encoder movement recently, assume that we're stopped.
+  if (countPeriod > 8000 && enableShutter) {
+    FPSrealAvg = 0;
+  }
+
   if (enableMotSwitch) {
-    if (motSwitchMode == 1) {
-      // Motor UI is FWD/OFF/REV switch + pot, so use normal slow-24fps pot scaling
-      if (!digitalRead(motDirFwdSwitch)) {
-        // FORWARD
-        motPotFPS = mapf(motPotClipped, 0, 4095, 10, 2400);  // convert mot pot value to FPS x 100
-        motMode = 1;
-      } else if (!digitalRead(motDirBckSwitch)) {
-        // REVERSE
-        motPotFPS = mapf(motPotClipped, 0, 4095, -10, -2400);  // convert mot pot value to FPS x 100
-        motMode = -1;
-      } else {
-        // STOP
-        motPotFPS = 0;
-        motMode = 0;
-      }
+    // Motor UI is switch + pot, so use normal 0-24fps pot scaling
+    if (!digitalRead(motDirFwdSwitch)) {
+      motPotFPS = mapf(motPotVal, 0, 4095, 20, 2400);  // convert mot pot value to FPS x 100
+      motMode = 1;
+    } else if (!digitalRead(motDirBckSwitch)) {
+      motPotFPS = mapf(motPotVal, 0, 4095, -20, -2400);  // convert mot pot value to FPS x 100
+      motMode = -1;
     } else {
-      // Motor UI RUN/STOP switch, FWD/REV switch, and pot, so use normal 0-24fps pot scaling
-      // First we test run/stop switch, then motor direction switch
-      if (!digitalRead(motDirFwdSwitch)) {
-        // RUN
-        if (!digitalRead(motDirBckSwitch)) {
-          // FORWARD
-          motPotFPS = mapf(motPotClipped, 0, 4095, 10, 2400);  // convert mot pot value to FPS x 100
-          motMode = 1;
-
-        } else {
-          // REVERSE
-          motPotFPS = mapf(motPotClipped, 0, 4095, -10, -2400);  // convert mot pot value to FPS x 100
-          motMode = -1;
-        }
-      } else {
-        // STOP
-        motPotFPS = 0;
-        motMode = 0;
-      }
+      motPotFPS = 0;
+      motMode = 0;
     }
-
   } else {
     // Motor UI is only pot, so use Use FORWARD-STOP-BACK pot scaling with deadband in center
     int bandWidth = 500;  // width of "deadband" in middle of pot range where speed is forced to 0
     int bandMin = 2048 - bandWidth / 2;
     int bandMax = 2048 + bandWidth / 2;
 
-    if (motPotClipped < bandMin) {
-      motPotFPS = mapf(motPotClipped, 0, bandMin, -2400, 0);
-    } else if (motPotClipped > bandMax) {
-      motPotFPS = mapf(motPotClipped, bandMin, 4095, 0, 2400);
+    if (motPotVal < bandMin) {
+      motPotFPS = mapf(motPotVal, 0, bandMin, -2400, 0);
+    } else if (motPotVal > bandMax) {
+      motPotFPS = mapf(motPotVal, bandMin, 4095, 0, 2400);
     } else {
       motPotFPS = 0;
     }
   }
-
 
 #if (enableSlewPots)
   motSlewVal = map(motSlewVal, 0, 4095, motSlewMin, motSlewMax);  // turn slew val pot into ms ramp time
@@ -813,87 +719,18 @@ motPotClipped = constrain(motPotClipped, 0, 4095);
     motPotFPSOld = motPotFPS;
   }
 
-  float FPStemp = motAvg.getValue() / 100.0;  // use slewed value for target FPS (dividing by 100 to get floating point FPS)
-
-  // Add more natural scaling when we translate from pot to actual FPS
+  FPStarget = motAvg.getValue() / 100.0;  // use slewed value for target FPS (dividing by 100 to get floating point FPS)
   // These values may be negative, but fscale only handles positive values, so...
-  
-  if (FPStemp < 0.0) {
+  //float FPStargetScaled;
+  if (FPStarget < 0.0) {
     // negative FPS values
-    FPStemp = FPStemp * -1.0;                                     // make it positive before fscale function
-    FPStarget = (fscale(0.0, 24.0, 0.0, 24.0, FPStemp, 3) * -1.0);  // reverse log scale and turn it negative again
+    FPStarget = FPStarget * -1.0;                                     // make it positive before fscale function
+    FPStarget = (fscale(0.0, 24.0, 0.0, 24.0, FPStarget, 4) * -1.0);  // reverse log scale and turn it negative again
   } else {
-    FPStarget = fscale(0.0, 24.0, 0.0, 24.0, FPStemp, 3);  // number is positive so just reverse log scale it
+    FPStarget = fscale(0.0, 24.0, 0.0, 24.0, FPStarget, 4);  // number is positive so just reverse log scale it
   }
 
-  /////////////////////
-  // SINGLE FRAME CODE
-  /////////////////////
-
-  // Check if we're in single frame mode and assert control over things
-  if (motMode == 0) { // we're in stop mode
-    if (motSingle == 1) { // single frame in progress
-    // SINGLE FRAME FORWARD
-      if (motSingle != motSinglePrev) {
-        //Serial.println("FIRST"); // first instance of the loop during a single frame move
-        frameOldsingle = frame; // log the current frame when we began the single frame move
-        motSinglePrev = motSingle;
-        updateShutterMap(1, 0.7); // force manual shuttermap for single framing
-       }
-      if (frameOldsingle != frame && count >70) {
-        // we're ready to show frame
-        FPStarget = 0; // stop
-        motSingle = 0; // turn off single flag
-        motSinglePrev = motSingle;
-        updateShutterMap(shutBladesVal, shutAngleVal); // return to normal
-      } else {
-        // travel to the next frame
-        FPStarget = singleFPS * -1; // jam in preset speed
-      }
-    } else if (motSingle == -1) {
-      // SINGLE FRAME BACKWARD
-      if (motSingle != motSinglePrev && count < 90) {
-        //Serial.println("FIRST"); // first instance of the loop during a single frame move
-        frameOldsingle = frame; // log the current frame when we began the single frame move
-        motSinglePrev = motSingle;
-        updateShutterMap(1, 0.7); // force manual shuttermap for single framing
-       }
-      if (frameOldsingle != frame) {
-        // we're ready to show frame
-        FPStarget = 0; // stop
-        motSingle = 0; // turn off single flag
-        motSinglePrev = motSingle;
-        updateShutterMap(shutBladesVal, shutAngleVal); // return to normal
-      } else {
-        // travel to the next frame
-        FPStarget = singleFPS * -1; // jam in preset speed
-      }
-    }
-    
-  }
-
-  // Transform FPStarget into motor microseconds using choice of 2 methods
-  #if motorSpeedMode
-    // USE PID STYLE CLOSED LOOP
-    float FPSdiff = abs(FPStarget - FPSrealAvg);
-    if (FPStarget > 6) {
-      if (FPSdiff < 2) FPSdiff = FPSdiff * 0.2; // make changes much smaller when close to setpoint, but only at higher speeds so we can get started from stopped condition
-    }
-    float TESTmotSpeedUS;
-    if (FPStarget == 0) {
-      TESTmotSpeedUS = 1500;
-    } else if (FPStarget < FPSrealAvg) {
-      TESTmotSpeedUS = motSpeedUS + FPSdiff;
-    } else if (FPStarget > FPSrealAvg) {
-      TESTmotSpeedUS = motSpeedUS - FPSdiff;
-    }
-    motSpeedUS = TESTmotSpeedUS; 
-    motSpeedUS = constrain(motSpeedUS, 1200, 1800); // prevent runaway in case of broken belt or other disaster
-  #else
-    // USE HARD-CODED SPEED
-    motSpeedUS = mapf(FPStarget, -24.0, 24.0, motMinUS, motMaxUS);  // manually convert FPS to motor pulse width in uS
-  #endif
-
+  motSpeedUS = mapf(FPStarget, -24.0, 24.0, motMinUS, motMaxUS);  // convert FPS to motor pulse width in uS
   int motDuty = (1 << motPWMRes) * motSpeedUS / motPWMPeriod;     // convert pulse width to PWM duty cycle (duty = # of values at current res * US / pulse period)
   ledcWrite(motPWMChannel, motDuty);                              // update motor speed
   if (debugMotor) {
@@ -905,54 +742,23 @@ motPotClipped = constrain(motPotClipped, 0, 4095);
     Serial.print(FPSrealAvg);
     Serial.print(", Mot uS: ");
     Serial.print(motSpeedUS);
-    Serial.print(", Mot PWM: ");
+    Serial.print(", Mot PWM Duty: ");
     Serial.println(motDuty);
-  }
-  if (debugFPSgraph) {
-    Serial.print("-24, ");
-    Serial.print(FPSrealAvg);
-    Serial.println(", 24");
   }
 }
 
 #if (enableButtons)
-void pressed(Button2& btn) {
+void buttonTap(Button2& btn) {
   if (btn == buttonA) {
-    if (buttonAstate == 0) {
-      if (debugUI) {
-        Serial.println("Button A pressed");
-      }
-      motSingle = 1;
-      buttonAstate = 1;
+    if (debugUI) {
+      Serial.println("Button A clicked");
     }
+    // insert single frame code here
   } else if (btn == buttonB) {
-    if (buttonBstate == 0) {
-      if (debugUI) {
-      Serial.println("Button B pressed");
-      }
-      motSingle = -1;
-      buttonBstate = 1;
+    if (debugUI) {
+      Serial.println("Button B clicked");  // insert single frame code here
     }
-  }
-}
-
-void released(Button2& btn) {
-  if (btn == buttonA) {
-    if (buttonAstate == 1) {
-      if (debugUI) {
-        Serial.println("Button A released");
-      }
-      //motSingle = 1;
-      buttonAstate = 0;
-    }
-  } else if (btn == buttonB) {
-    if (buttonBstate == 1) {
-      if (debugUI) {
-        Serial.println("Button B released");
-      }
-      //motSingle = -1;
-      buttonBstate = 0;
-    }
+    // insert single frame code here
   }
 }
 #endif
@@ -1079,8 +885,6 @@ double mapf(double x, double in_min, double in_max, double out_min, double out_m
  Floating Point Autoscale Function V0.1
  Paul Badger 2007
  Modified from code by Greg Shakar
- - curve param is linear at 0, log(ish) > 0
- 
  */
 float fscale(float originalMin, float originalMax, float newBegin, float newEnd, float inputValue, float curve) {
 
