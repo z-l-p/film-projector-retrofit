@@ -10,14 +10,9 @@
 // LED is dimmed via CC LED driver board with PWM input, driven by ESP32 LEDC (which causes slight PWM blinking artifacts at low brightness levels)
 // Future option exists for current-controlled dimming (set LedDimMode=0): Perhaps a log taper digipot controlled via SPI? Probably can't dim below 20% though.
 
-// TODO Urgent:
-// add button C to code (pin 27)
-// add something to button callback functions (single-frame in stop mode? lamp mute in run mode?)
-// add RGB LED feedback for different functions (maybe different color for each speed?)
 
 // TODO Nice but not essential:
 // put UI vars in struct, in case we want to receive them from a remote ESP connected via radio
-// Add closed-loop PID motor speed, eliminating hand-tuned motMinUS & motMaxUS values (Maybe this could also enable cheaper motor/ESC since PID would boost low speed torque and control?)
 // if ESP32 Arduino core ever gets support for ledc output_invert method, we can simplify the ISR inverted condition
 
 // Include the libraries
@@ -29,7 +24,6 @@
 #include <SimpleKalmanFilter.h>  // https://github.com/denyssene/SimpleKalmanFilter
 #include <Button2.h>             // https://github.com/LennartHennigs/Button2
 #include <Adafruit_NeoPixel.h>   // https://github.com/adafruit/Adafruit_NeoPixel
-#include <PID_v1.h>         // https://www.arduino.cc/reference/en/libraries/pid/
 
 // Uncomment ONE of these to load preset configurations from the matching files
 #include "spectral_eiki.h" // "Store projector-specific settings here"
@@ -40,7 +34,7 @@ int debugEncoder = 0;  // serial messages for encoder count and shutterMap value
 int debugUI = 0;       // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0;   // serial messages for frame count and FPS
 int debugFPSgraph = 0; // serial messages for only FPSrealAvg (for Arduino IDE serial plotter)
-int debugMotor = 1;    // serial messages for motor info
+int debugMotor = 0;    // serial messages for motor info
 int debugLed = 0;      // serial messages for LED info (LED pot val, safe multiplier, computed brightness, shutter blades and angle)
 
 // Encoder
@@ -149,7 +143,7 @@ int motSingle = 0;                       // indicates that we're traveling in si
 int motSinglePrev = 0;                    // were we in single frame mode during the last loop?
 int motSingleMinTime = 500;                // the minimum movement time (MS) for each single frame move
 volatile int motModeReal = 0;                         // Current running direction detected by encoder (-1, 1)
-double motSpeedUS = 1500;                       // speed of motor (in pulsewidth uS from 1000-2000)
+float motSpeedUS = 1500;                       // speed of motor (in pulsewidth uS from 1000-2000)
 const int motPWMRes = 16;                 // bits of resolution for extra control (standard servo lib uses 10bit)
 const int motPWMFreq = 50;                // PWM frequency (50Hz is standard for RC servo / ESC)
 int motPWMPeriod = 1000000 / motPWMFreq;  // microseconds per pulse
@@ -179,15 +173,9 @@ long frameOld = 0;           // old frame number for encoder
 long frameOldsingle = 0;           // old frame number for encoder
 volatile float FPScount = 0;  // measured FPS, sourced from encoder counts (100 updates per frame)
 volatile float FPSframe = 0;  // measured FPS, sourced from frame counts
-double FPSreal = 0; // non-volatile FPS, sourced from encoder counts at slow speeds and frame counts at high speeds
-double FPSrealAvg = 0; // non-volatile measured FPS after averaging for jitter reduction (double because PID lib requires it)
-double FPStarget = 0;         // requested FPS (double because PID lib requires it)
-
-// For PID motor speed control
-//Specify the links and initial tuning parameters
-//double Kp=1, Ki=0, Kd=0;
-//double PIDval = 0;
-//PID myPID(&FPSrealAvg, &PIDval, &FPStarget, Kp, Ki, Kd, DIRECT); // in, out, setpoint, Kp, Ki, Kd, mode (DIRECT or REVERSE)
+float FPSreal = 0; // non-volatile FPS, sourced from encoder counts at slow speeds and frame counts at high speeds
+float FPSrealAvg = 0; // non-volatile measured FPS after averaging for jitter reduction
+float FPStarget = 0;         // requested FPS
 
 // Settings for HobbyWing Quicrun Fusion SE motor
 #define ESC_WRITE_BIT_TIME_WIDTH 2500  // uSec length of each pulse ("2500" = 400 baud)
@@ -217,9 +205,6 @@ elapsedMillis timerSingle;  // MS since single frame move began
 
 void setup() {
   Serial.begin(115200);  // Setup Serial Monitor
-
-  //myPID.SetMode(AUTOMATIC);
-  //myPID.SetOutputLimits(double(motMinUS), double(motMaxUS));
 
   pinMode(ledPin, OUTPUT);  // LEDC setup will take care of this later, but force it now just in case we're using current-controlled dimming
   digitalWrite(ledPin, 1);  // turn off LED during startup to prevent film burns
@@ -332,8 +317,6 @@ void setup() {
 /////////////////////////////////////////////
 
 void loop() {
-  
-  //myPID.Compute();
 
  //update these functions @ 200 Hz
    if (timerFPS >= 5) {
@@ -423,6 +406,10 @@ void IRAM_ATTR pinChangeISR() {
         motModeReal = 1; // mark that we're running forwards
       }
       count++;
+      // wrap around
+      if (count > countsPerRev -1) {
+        count = 0;
+      }
     } else {
       // moving backwards ...
       if (EncIndexCount == 2) {  // reset counter on 'middle" transition during index condition
