@@ -24,7 +24,9 @@ heatsinkZ = 20; // size of LED heatsink
 //eiki_LED_mount();
 //eiki_LED_lens_holder(0); // export STL with 0 argument for holder, 1 argument for holder fingers
 //eiki_LEDdriver_tray(); // tray to keep the LED driver in place
-//eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
+//projection() { // optional 2D projection of the control panel, used for SVG export for control panel label design.
+eiki_control_panel(); // flat faceplate for control panel on side of projector - PRINT UPSIDE DOWN
+//}
 //eiki_power_switch_ring(); // adapter ring to mount power switch in hole for threading lamp
 //eiki_terminal_block_mount(); // mount to hold electrical terminal blocks
 //eiki_cable_clip(); // cable clip that mounts on bosses inside projector
@@ -38,7 +40,7 @@ heatsinkZ = 20; // size of LED heatsink
 
 //p26_encoder_magnet_mount(); // 1-piece threaded part to attach encoder magnet to drive shaft
 //p26_encoder_mount(); // mount to attach encoder bracket to P26 chassis
-P26_esp_mount();
+//P26_esp_mount();
 
 
 ////////////// THE MODULES ////////////////

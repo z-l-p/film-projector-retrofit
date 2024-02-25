@@ -34,7 +34,7 @@ int debugEncoder = 0;  // serial messages for encoder count and shutterMap value
 int debugUI = 0;       // serial messages for user interface inputs (pots, buttons, switches)
 int debugFrames = 0;   // serial messages for frame count and FPS
 int debugFPSgraph = 0; // serial messages for only FPSrealAvg (for Arduino IDE serial plotter)
-int debugMotor = 0;    // serial messages for motor info
+int debugMotor = 1;    // serial messages for motor info
 int debugLed = 0;      // serial messages for LED info (LED pot val, safe multiplier, computed brightness, shutter blades and angle)
 
 // Encoder
@@ -157,8 +157,7 @@ void IRAM_ATTR send_LEDC();
 AS5X47 as5047(EncCSN);
 // will be used to read data from the magnetic encoder
 ReadDataFrame readDataFrame;
-const int countsPerRev = 100;            // how many encoder transitions per revolution (should be 4x the num pulses in AS5047 setup code)
-volatile bool shutterMap[countsPerRev];  // array holding values for lamp state at each position of digital shutter
+volatile bool shutterMap[countsPerFrame];  // array holding values for lamp state at each position of digital shutter
 volatile bool shutterStateOld = 0;       // stores the on/off state of the shutter from previous encoder position
 static byte abOld;                       // Initialize state
 volatile int count;                      // current rotary count
@@ -262,13 +261,13 @@ void setup() {
 
   // Set rotation direction (see AS5047 datasheet page 17)
   Settings1 settings1;
-  settings1.values.dir = 0;
+  settings1.values.dir = encoderDir;
   as5047.writeSettings1(settings1);
 
   // Set ABI output resolution (see AS5047 datasheet page 19)
   // (pulses per rev: 5 = 50 pulses, 6 = 25 pulses, 7 = 8 pulses)
   Settings2 settings2;
-  settings2.values.abires = 6;
+  settings2.values.abires = 6; // 25 pulses per rev = 100 transitions. This is what we want.
   as5047.writeSettings2(settings2);
 
   // Disable ABI output when magnet error (low or high) exists (see AS5047 datasheet page 24)
@@ -317,21 +316,21 @@ void setup() {
 /////////////////////////////////////////////
 
 void loop() {
+// Time-critical IO happens in interrupts, but UI and decision-making happens at a slower pace in the main loop
 
  //update these functions @ 200 Hz
-   if (timerFPS >= 5) {
-      calcFPS();
-      updateMotor();
-     timerFPS = 0;
-   }
+  //  if (timerFPS >= 5) {
+
+  //    timerFPS = 0;
+  //  }
 
   // update these functions @ 50 Hz
   if (timerUI >= 20) {
     as5047MagCheck();  // check for encoder magnet proximity
+    calcFPS();
     readUI();
+    updateMotor();
     updateLed();
-
-    
     timerUI = 0;
   }
 
@@ -354,7 +353,7 @@ void loop() {
     countOld = count;
   }
 
-  // These happen once per frame
+  // These happen once per frame (only useful for debugging)
   if (frameOld != frame) {
     if (debugFrames) {
       Serial.print("FRAME: ");
@@ -407,7 +406,7 @@ void IRAM_ATTR pinChangeISR() {
       }
       count++;
       // wrap around
-      if (count > countsPerRev -1) {
+      if (count > countsPerFrame -1) {
         count = 0;
       }
     } else {
@@ -427,7 +426,7 @@ void IRAM_ATTR pinChangeISR() {
       count--;
       // wrap around the circle instead of using negative steps
       if (count < 0) {
-        count = countsPerRev - 1;
+        count = countsPerFrame - 1;
       }
     }
   }
@@ -518,7 +517,7 @@ void as5047MagCheck() {
 // This is required during setup since interrupt counts are relative but SPI is absolute
 // Also useful if we ever need to recover from a temporary loss of magnet position
 void fixCount() {
-  count = map(as5047.readAngle(), 0, 360, 0, countsPerRev);
+  count = map(as5047.readAngle(), 0, 360, 0, 100);
   Serial.println("   (Updated count via SPI)");
 }
 
@@ -530,9 +529,9 @@ void updateShutterMap(byte shutterBlades, float shutterAngle) {
   if (shutterBlades < 1) shutterBlades = 1;          // it would break if set to 0
   shutterAngle = constrain(shutterAngle, 0.0, 1.0);  // make sure it's 0-1
   for (int myBlade = 0; myBlade < shutterBlades; myBlade++) {
-    int countOffset = myBlade * (countsPerRev / shutterBlades);
-    for (int myCount = 0; myCount < countsPerRev / shutterBlades; myCount++) {
-      if (myCount < countsPerRev / shutterBlades * (1.0 - shutterAngle)) {
+    int countOffset = myBlade * (countsPerFrame / shutterBlades);
+    for (int myCount = 0; myCount < countsPerFrame / shutterBlades; myCount++) {
+      if (myCount < countsPerFrame / shutterBlades * (1.0 - shutterAngle)) {
         shutterMap[myCount + countOffset] = 0;
       } else {
         shutterMap[myCount + countOffset] = 1;
@@ -564,6 +563,10 @@ void readUI() {
     ledSlewVal = ledSlewPotKalman.updateEstimate(analogRead(ledSlewPotPin));
     delay(2);
   #endif
+
+  // load the hard-coded shutter vals in case the pots are disabled
+  shutBladesVal = shutterBlades; 
+  shutAngleVal = shutterAngle;
 
   #if (enableShutterPots && enableShutter)
     shutBladesPotVal = shutBladesPotKalman.updateEstimate(analogRead(shutBladesPotPin));
@@ -638,6 +641,8 @@ void calcFPS() {
     FPSreal = myFPScount;
   }
 
+  FPSreal = FPSreal * FPSmultiplier; // convert the FPS for the P26
+
   FPSAvgTotal = FPSAvgTotal - FPSAvgArray[FPSAvgReadIndex];   // subtract the last reading
   FPSAvgArray[FPSAvgReadIndex] = FPSreal;    // store the new reading
   FPSAvgTotal = FPSAvgTotal + FPSAvgArray[FPSAvgReadIndex]; // add the reading to the total
@@ -694,7 +699,8 @@ ledBright = constrain(ledBright, 0, 4095);
   // SAFE MODE CHECK
   if (safeMode == 1) {
     if (motSingle != 0) {
-      ledBright = ledBright * safeMin;
+      // We're in one of the single modes, so ...
+      ledBright = ledBright * safeMin; // dim lamp to min safe brightness immediately
     } else {
       safeSpeedMult = fscale(4, 24.0, safeMin, 1.0, abs(FPSrealAvg), 0); // safety multiplier for FPS (with optional nonlinear scaling)
       safeSpeedMult = constrain(safeSpeedMult, safeMin, 1.0); // clip values
@@ -702,8 +708,8 @@ ledBright = constrain(ledBright, 0, 4095);
     }
   }
 
-  // STOPPED CHECK (Turn off lamp if projector is stopped, except when single buttons are pressed)
-    if (FPSrealAvg == 0 && !buttonAstate && !buttonBstate) {
+  // STOPPED CHECK (Turn off lamp if projector is stopped, except when single buttons are pressed or single is active)
+    if (FPSrealAvg == 0 && motSingle == 0 && !buttonAstate && !buttonBstate) {
       ledBright = 0;
       //Serial.print("STOP CHECK ");
     }
@@ -727,7 +733,7 @@ ledBright = constrain(ledBright, 0, 4095);
     Serial.print(", Shutter Angle: ");
     Serial.println(shutAngleVal);
   }
-  // at slow speeds OR if the shutter is fully open OR shutter disabled, update the LED PWM directly because ISR isn't firing unless in motion
+  // at slow speeds OR if the shutter is fully open OR shutter disabled, update the LED PWM directly because ISR isn't firing often (or at all)
   if (countPeriod > 50000 || shutAngleVal == 1.0 || !enableShutter) {
     send_LEDC();
   }
@@ -741,10 +747,11 @@ motPotClipped = constrain(motPotClipped, 0, 4095);
 
   // Depending on the motor direction switch, we translate the pot ADC to FPS with optional negative scaling
   // (The Ramp library is currently set up for ints, so our float FPS is multiplied by 100 to make it int 2400)
+  // The switch and pot combinations are abstracted into MotMode and motPotFPS variables
 
   if (enableMotSwitch) {
     if (motSwitchMode == 1) {
-      // Motor UI is FWD/OFF/REV switch + pot, so use normal slow-24fps pot scaling
+      // Motor UI = Eiki: FWD/OFF/REV switch + pot, so use normal slow-24fps pot scaling
       if (!digitalRead(motDirFwdSwitch)) {
         // FORWARD
         motPotFPS = mapf(motPotClipped, 0, 4095, 10, 2400);  // convert mot pot value to FPS x 100
@@ -759,7 +766,7 @@ motPotClipped = constrain(motPotClipped, 0, 4095);
         motMode = 0;
       }
     } else {
-      // Motor UI RUN/STOP switch, FWD/REV switch, and pot, so use normal 0-24fps pot scaling
+      // Motor UI = P26: RUN/STOP switch, FWD/REV switch, and pot, so use normal 0-24fps pot scaling
       // First we test run/stop switch, then motor direction switch
       if (!digitalRead(motDirFwdSwitch)) {
         // RUN
@@ -826,50 +833,64 @@ motPotClipped = constrain(motPotClipped, 0, 4095);
   /////////////////////
 
   // Check if we're in single frame mode and assert control over things
-  //if (motMode == 0) { // we're in stop mode
-    if (motSingle == 1) { // single frame in progress
-    // SINGLE FRAME FORWARD
-      if (motSingle != motSinglePrev) {
-        //Serial.println("FIRST"); // first instance of the loop during a single frame move
-        frameOldsingle = frame; // log the current frame when we began the single frame move
-        motSinglePrev = motSingle;
-        updateShutterMap(1, 1.0); // force manual shuttermap for single framing
-       }
-      if (frameOldsingle != frame && count >50) {
-        // we're ready to show frame
-        FPStarget = 0; // stop
-        //motSingle = 0; // turn off single flag
-        //motSinglePrev = motSingle;
-        //updateShutterMap(shutBladesVal, shutAngleVal); // return to normal
-      } else {
-        // travel to the next frame
-        FPStarget = singleFPS * 1; // jam in preset speed
+
+  if (motSingle == 1) {
+  // EIKI SINGLE FRAME FORWARD
+    if (motSingle != motSinglePrev) {
+      Serial.println("SINGLE FORWARD MOVE START"); 
+      frameOldsingle = frame; // log the current frame when we began the single frame move
+      motSinglePrev = motSingle;
+      updateShutterMap(1, 1.0); // force open shutter for single framing
       }
-    } else if (motSingle == -1) {
-      // SINGLE FRAME BACKWARD
-      if (motSingle != motSinglePrev && count < 70) {
-        //Serial.println("FIRST"); // first instance of the loop during a single frame move
-        frameOldsingle = frame; // log the current frame when we began the single frame move
-        motSinglePrev = motSingle;
-        updateShutterMap(1, 1.0); // force manual shuttermap for single framing
-       }
-      if (frameOldsingle != frame) {
-        // we're ready to show frame
-        FPStarget = 0; // stop
-        //motSingle = 0; // turn off single flag
-        //motSinglePrev = motSingle;
-        //updateShutterMap(shutBladesVal, shutAngleVal); // return to normal
-      } else {
-        // travel to the next frame
-        FPStarget = singleFPS * -1; // jam in preset speed
-      }
+    if (frameOldsingle != frame && count >20) { // keep out of pulldown in 0-13 zone, so try to land around 50
+      // we're ready to show frame
+      Serial.println("SINGLE FORWARD MOVE DONE");
+      FPStarget = 0; // stop
+      motSingle = 0; // turn off single flag
+      motSinglePrev = motSingle;
+      frameOldsingle = frame;
+      //updateShutterMap(shutBladesVal, shutAngleVal); // return to normal
+    } else {
+      // travel to the next frame
+      FPStarget = singleFPS * 1; // jam in preset speed
     }
+  } else if (motSingle == -1) {
+    // EIKI SINGLE FRAME BACKWARD
+    if (motSingle != motSinglePrev ) { 
+      Serial.println("SINGLE BACKWARD MOVE START");
+      frameOldsingle = frame; // log the current frame when we began the single frame move
+      motSinglePrev = motSingle;
+      updateShutterMap(1, 1.0); // force open shutter for single framing
+      }
+    if (frameOldsingle != frame && count < 80) { // try to land around 50
+      // we're ready to show frame
+      Serial.println("SINGLE BACKWARD MOVE DONE");
+      FPStarget = 0; // stop
+      motSingle = 0; // turn off single flag
+      motSinglePrev = motSingle;
+      frameOldsingle = frame;
+      //updateShutterMap(shutBladesVal, shutAngleVal); // return to normal
+    } else {
+      // travel to the next frame
+      FPStarget = singleFPS * -1; // jam in preset speed (backwards)
+    }
+  } else if (motSingle == 2) { 
+    // Eiki freeze frame (either button pressed while motor was running)
+    Serial.println("EIKI FREEZE FRAME");
+    FPStarget = 0;
+    updateShutterMap(1, 1.0); // force open shutter for single framing
+    send_LEDC();
+  } else if (motSingle == 3) { 
+    // P26 "BURN" BUTTON special case
+    Serial.println("P26 BURN MODE (open shutter)");
+    updateShutterMap(1, 1.0); // force open shutter for single framing
+    send_LEDC();
+  }
     
-  //}
 
   // Transform FPStarget into motor microseconds using choice of 2 methods
   #if motorSpeedMode
-    // USE CLOSED LOOP motor control with feedback from encoder
+    // USE CLOSED LOOP motor control with feedback from encoder (not working well enough to use for Spectral)
     float FPSdiff = abs(FPStarget - FPSrealAvg);
     if (FPStarget > 6) {
       if (FPSdiff < 2) FPSdiff = FPSdiff * 0.2; // make changes much smaller when close to setpoint, but only at higher speeds so we can get started from stopped condition
@@ -885,6 +906,7 @@ motPotClipped = constrain(motPotClipped, 0, 4095);
     motSpeedUS = TESTmotSpeedUS; 
     motSpeedUS = constrain(motSpeedUS, 1200, 1800); // prevent runaway in case of broken belt or other disaster
   #else
+    
     // USE HARD-CODED SPEED
     float TESTmotSpeedUS;
     
@@ -896,7 +918,7 @@ motPotClipped = constrain(motPotClipped, 0, 4095);
       TESTmotSpeedUS = mapf(FPStarget, 0, -24, 1500 + minUSoffset, motMinUS);
     }
     motSpeedUS = TESTmotSpeedUS;
-    //motSpeedUS = mapf(FPStarget, -24.0, 24.0, motMinUS, motMaxUS);  // manually convert FPS to motor pulse width in uS
+    //motSpeedUS = mapf(FPStarget, -24.0, 24.0, motMinUS, motMaxUS);  // basic method without enforcing minumum speed
   #endif
 
   int motDuty = (1 << motPWMRes) * motSpeedUS / motPWMPeriod;     // convert pulse width to PWM duty cycle (duty = # of values at current res * US / pulse period)
@@ -931,16 +953,34 @@ void pressed(Button2& btn) {
       if (debugUI) {
         Serial.println("Button A pressed");
       }
-      motSingle = 1;
       buttonAstate = 1;
+      if (motSwitchMode) {
+        // Eiki motor switch mode, so we have a button for each single frame direction 
+        if (motMode == 0) {
+          motSingle = 1; // If stopped when button was pressed, set single frame fwd
+        } else {
+          motSingle = 2; // Set freeze frame
+        }
+      } else {
+        // P26 motor switch mode with one button, so we use a specific mode
+        motSingle = 3;
+      }
     }
   } else if (btn == buttonB) {
     if (buttonBstate == 0) {
       if (debugUI) {
       Serial.println("Button B pressed");
       }
-      motSingle = -1;
       buttonBstate = 1;
+      if (motSwitchMode) {
+        // Eiki motor switch mode, so we have a button for each single frame direction 
+        // P26 doesn't have a buttonB, so need to test further
+        if (motMode == 0) {
+          motSingle = -1; // If stopped when button was pressed, set single frame rev
+        } else {
+          motSingle = 2; // Set freeze frame
+        }
+      }
     }
   }
 }
@@ -948,23 +988,34 @@ void pressed(Button2& btn) {
 void released(Button2& btn) {
   if (btn == buttonA) {
     if (buttonAstate == 1) {
-      updateShutterMap(shutBladesVal, shutAngleVal); // return shutter map to normal
+      
       if (debugUI) {
         Serial.println("Button A released");
       }
-      motSingle = 0; // turn off single flag
+      if (motSingle == 2 || motSingle == 3) motSingle = 0; // turn off single flag if we're leaving Eiki freeze-frame mode or P26 open shutter mode
       motSinglePrev = motSingle;
       buttonAstate = 0;
+      updateShutterMap(shutBladesVal, shutAngleVal); // return shutter map to normal
+      Serial.print("Leaving Eiki / P26 FREEZE/BURN mode... motSingle = ");
+      Serial.println(motSingle);
+      if (motSingle == 2 || motSingle == 3) motSingle = 0; // turn off single flag if we're leaving Eiki freeze-frame mode or P26 open shutter mode
+      motSinglePrev = motSingle;
+      buttonAstate = 0;
+      updateShutterMap(shutBladesVal, shutAngleVal); // return shutter map to normal
+      Serial.print("Leaving Eiki / P26 FREEZE/BURN mode... motSingle = ");
+      Serial.println(motSingle);
     }
   } else if (btn == buttonB) {
     if (buttonBstate == 1) {
-      updateShutterMap(shutBladesVal, shutAngleVal); // return shutter map to normal
       if (debugUI) {
         Serial.println("Button B released");
       }
-      motSingle = 0; // turn off single flag
+      if (motSingle == 2 || motSingle == 3) motSingle = 0; // turn off single flag if we're leaving Eiki freeze-frame mode or P26 open shutter mode
       motSinglePrev = motSingle;
       buttonBstate = 0;
+      updateShutterMap(shutBladesVal, shutAngleVal); // return shutter map to normal
+      Serial.print("Leaving Eiki / P26 FREEZE/BURN mode... motSingle = ");
+      Serial.println(motSingle);
     }
   }
 }
