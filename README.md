@@ -2,7 +2,8 @@
 
 ![Projection Performance animated GIF](docs/images/p26_walk_320_8fps.gif)
 
-##This is a development platform to support the [Wandering 16mm Projector Retrofit WIKI](https://www.filmlabs.org/wiki/en/meetings_projects/spectral/mire-wandering/wandering-16mmprojection/start) on filmlabs.org. Go there for complete documentation.
+This is a development platform to support the [Wandering 16mm Projector Retrofit WIKI](https://www.filmlabs.org/wiki/en/meetings_projects/spectral/mire-wandering/wandering-16mmprojection/start) on filmlabs.org. Go there for complete documentation.
+=====
 
 ----
 
