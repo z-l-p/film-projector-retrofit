@@ -38,8 +38,8 @@ const float FPSmultiplier = 1; // difference between computed and actual FPS (P2
 int shutterBlades = 2;     // How many shutter blades: (minimum = 1 so lower values will be constrained to 1)
 float shutterAngle = 0.4;  // float shutter angle per blade: 0= LED always off, 1= LED always on, 0.5 = 180d shutter angle
 
-int motMinUS = 1800;                      // motor pulse length at -24fps (set this by testing)
-int motMaxUS = 1210;                      // motor pulse length at +24fps (set this by testing)
-int minUSoffset = 80;          // used to enforce a minumum speed when running. Otherwise low motor speed = stopped
+int motMinUS = 1800;       // motor pulse length at -24fps (set this by testing)
+int motMaxUS = 1210;       // motor pulse length at +24fps (set this by testing)
+int minUSoffset = 80;      // used to enforce a minumum speed when running. Otherwise low motor speed = stopped
 
 int singleFPS = 6;        // what speed to use for film movement in single frame mode
