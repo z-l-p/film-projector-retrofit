@@ -1,15 +1,15 @@
 # film-projector-retrofit
 
-![Projector](docs/images/Projector-Outside-600.jpg)
-![Projector internals](docs/images/Projector-Inside-600.jpg)
+![Projection Performance animated GIF](docs/images/p26_walk_320_8fps.gif)
 
-**Make a 16mm film projector portable and playable like an instrument. Retrofit with a DC motor and LED lamp, controlled by ESP32 micro-controller.**
-This project is part of [SPECTRAL Wandering Sounds and Images Seminar](https://www.mire-exp.org/evenement/spectral-wandering-sound-and-images/) in Nantes FR, enabling film projection performances that explore itinerancy, nomadism, and adaptation to multiple environments.
-
-##This repo is a development platform to support the [Wandering 16mm Projector Retrofit WIKI](https://www.filmlabs.org/wiki/en/meetings_projects/spectral/mire-wandering/wandering-16mmprojection/start) on filmlabs.org. Go there for complete documentation.
+##This is a development platform to support the [Wandering 16mm Projector Retrofit WIKI](https://www.filmlabs.org/wiki/en/meetings_projects/spectral/mire-wandering/wandering-16mmprojection/start) on filmlabs.org. Go there for complete documentation.
 
 ----
 
+**Make a 16mm film projector portable and playable like an instrument. Retrofit with a DC motor and LED lamp, controlled by ESP32 micro-controller.**
+This project is part of [SPECTRAL Wandering Sounds and Images Seminar](https://www.mire-exp.org/evenement/spectral-wandering-sound-and-images/) in Nantes FR in 2023/2024, enabling film projection performances that explore itinerancy, nomadism, and adaptation to multiple environments.
+
+----
 
 Contents
 ======
@@ -41,5 +41,11 @@ Contents
 ----
 
  - Printable files for 3D-printed parts (rendered from openscad)
+ 
+ ----
+ 
+ ![Portable Eumig P26 Projectors](docs/images/spectral-3-projector-no-hands-600.jpg)
+ ![Eiki Projector](docs/images/Projector-Outside-600.jpg)
+ ![Eiki Projector internals](docs/images/Projector-Inside-600.jpg)
 
 
