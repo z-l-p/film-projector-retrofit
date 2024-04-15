@@ -3,9 +3,13 @@
 ![Projector](docs/images/Projector-Outside-600.jpg)
 ![Projector internals](docs/images/Projector-Inside-600.jpg)
 
-An attempt to modernize a 16mm film projector with DC motor and LED lamp, controlled by ESP32 micro-controller. This project is part of SPECTRAL Wandering Sounds and Images Seminar https://www.mire-exp.org/evenement/spectral-wandering-sound-and-images/
+**Make a 16mm film projector portable and playable like an instrument. Retrofit with a DC motor and LED lamp, controlled by ESP32 micro-controller.**
+This project is part of [SPECTRAL Wandering Sounds and Images Seminar](https://www.mire-exp.org/evenement/spectral-wandering-sound-and-images/) in Nantes FR, enabling film projection performances that explore itinerancy, nomadism, and adaptation to multiple environments.
 
-This info is a work-in-progress, and designed to work with specific hardware. It won't be stable until February 2024 when it will appear on this wiki: https://www.filmlabs.org/wiki/en/meetings_projects/spectral/mire-wandering/wandering-16mmprojection/start
+##This repo is a development platform to support the [Wandering 16mm Projector Retrofit WIKI](https://www.filmlabs.org/wiki/en/meetings_projects/spectral/mire-wandering/wandering-16mmprojection/start) on filmlabs.org. Go there for complete documentation.
+
+----
+
 
 Contents
 ======
@@ -13,17 +17,15 @@ Contents
 [docs](https://github.com/z-l-p/film-projector-retrofit/tree/main/docs) 
 ---- 
 
- - [Bill of Materials](https://docs.google.com/spreadsheets/d/1z_asHddtIuv7a7RkZ9WCBqF81oMiJ9spwqh7lCQfW5E) (Google Sheets link, to be replaced by static CSV file)
+ - [Bill of Materials (BOM)](https://www.filmlabs.org/wiki/en/meetings_projects/spectral/mire-wandering/wandering-16mmprojection/budget) (filmlabs.org) or [Google Sheets alternate](https://docs.google.com/spreadsheets/d/1z_asHddtIuv7a7RkZ9WCBqF81oMiJ9spwqh7lCQfW5E) 
 	
- - [Step-by-step instructions](https://github.com/z-l-p/film-projector-retrofit/blob/main/docs/index.md) for building and using the projector
+ - [Step-by-step Construction Guide](https://www.filmlabs.org/wiki/en/meetings_projects/spectral/mire-wandering/wandering-16mmprojection/construction_guide/start) for building and using the projector (filmlabs.org)
 	
  - [Construction Photos](https://github.com/z-l-p/film-projector-retrofit/tree/main/docs/images)
 	
  - [Diagrams](https://github.com/z-l-p/film-projector-retrofit/tree/main/docs/diagrams)
  
  - [Datasheets](https://github.com/z-l-p/film-projector-retrofit/tree/main/docs/datasheets)
-	
- - The build guide is also availabe via direct link: https://z-l-p.github.io/film-projector-retrofit/
 
 [openscad](https://github.com/z-l-p/film-projector-retrofit/tree/main/openscad)
 ----
